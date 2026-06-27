@@ -5,8 +5,9 @@
  * with the universal interaction-contract.
  *
  * Pure transport: this class contains NO domain logic, NO intent
- * resolution and NO template rendering. Text in/out is passed
- * through stub conversions only.
+ * resolution and NO template rendering of its own. Conversion is
+ * delegated to RecognitionMapper / SpeechMapper, which can be
+ * replaced later (PR-7, PR-8) without changing this class.
  *
  * Does NOT know about:
  *  - Taxi
@@ -80,36 +81,27 @@ export class VoiceChannel {
         return this.state
     }
 
-    /**
-     * Recognized speech -> InteractionContract.
-     *
-     * This is a stub conversion. Real intent resolution
-     * is the responsibility of a future IntentResolver (PR-7).
-     */
     private handleRecognitionResult(result: RecognitionResult): void {
 
-        void this.options.interaction.dispatch({
-            type: "voice.recognized",
-            payload: {
-                text: result.text,
-                confidence: result.confidence,
-                language: result.language
-            }
-        })
+        const action = this.options.recognitionMapper.map(result)
+
+        this.options.interaction
+            .dispatch(action)
+            .catch((error: unknown) => {
+                // Per review: dispatch() failures are intentionally
+                // swallowed at this layer for now. The channel does
+                // not implement retries or error surfacing — this is
+                // a deliberate, documented limitation of PR-6.
+                void error
+            })
 
     }
 
-    /**
-     * InteractionContract event -> spoken text.
-     *
-     * This is a stub conversion. Real response generation
-     * is the responsibility of a future TemplateRenderer (PR-8).
-     */
     private handleInteractionEvent(event: InteractionEvent): void {
 
-        void this.options.speech.speak({
-            text: event.type
-        })
+        const speechOptions = this.options.speechMapper.map(event)
+
+        void this.options.speech.speak(speechOptions)
 
     }
 
