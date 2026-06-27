@@ -61,10 +61,13 @@ export class EmulatorContract implements InteractionContract {
     }
 
     async snapshot(): Promise<InteractionSnapshot> {
+        // Minimal snapshot: only what is needed to verify the
+        // infrastructure works, not a real domain state model.
         return {
             revision: this.revision,
             state: {
-                emulatorState: this.state
+                emulatorState: this.state,
+                revision: this.revision
             }
         }
     }

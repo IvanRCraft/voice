@@ -9,8 +9,6 @@ export enum EmulatorState {
 
     Idle = "idle",
 
-    Listening = "listening",
-
     Processing = "processing",
 
     Responding = "responding"
