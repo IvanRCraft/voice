@@ -57,17 +57,3 @@ declare global {
         webkitSpeechRecognition?: SpeechRecognitionConstructor
     }
 }
-
-export function getSpeechRecognitionConstructor(): SpeechRecognitionConstructor {
-    const ctor =
-        window.SpeechRecognition ??
-        window.webkitSpeechRecognition
-
-    if (!ctor) {
-        throw new Error(
-            "SpeechRecognition API is not supported in this browser."
-        )
-    }
-
-    return ctor
-}
