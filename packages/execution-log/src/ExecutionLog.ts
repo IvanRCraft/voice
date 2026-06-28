@@ -1,16 +1,16 @@
 /**
  * Execution Log
  *
- * Central store for the sequence of execution entries.
+ * Central storage for the sequence of execution entries.
  *
  * Responsibilities:
- *  - append entries
+ *  - add entries
  *  - read entries
  *  - clear the log
+ *  - get the full list of entries
  *
- * Does NOT know how entries are displayed or exported -- that is
- * the responsibility of LogSink implementations, optionally
- * reached through a LogDispatcher passed in at construction time.
+ * Does NOT handle display -- it forwards entries to a LogSink
+ * (typically a LogDispatcher) without knowing where they end up.
  */
 
 import type { LogEntry } from "./LogEntry"
@@ -20,9 +20,9 @@ export class ExecutionLog {
 
     private readonly entries: LogEntry[] = []
 
-    constructor(private readonly sink?: LogSink) {}
+    constructor(private readonly sink: LogSink) {}
 
-    append(kind: string, payload: unknown): void {
+    add(kind: string, payload: unknown): void {
 
         const entry: LogEntry = {
             timestamp: new Date().toISOString(),
@@ -31,8 +31,7 @@ export class ExecutionLog {
         }
 
         this.entries.push(entry)
-
-        this.sink?.write(entry)
+        this.sink.write(entry)
 
     }
 
