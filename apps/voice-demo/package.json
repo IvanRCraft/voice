@@ -1,0 +1,21 @@
+{
+  "name": "voice-demo",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Demo & Test Harness for the voice stack (PR-9)",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build"
+  },
+  "dependencies": {
+    "@interaction/contract": "^1.0.0",
+    "@voice/contracts": "^1.0.0",
+    "@voice/emulator": "^1.0.0",
+    "@voice/scenario-engine": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.0",
+    "vite": "^8.1.0"
+  }
+}
