@@ -1,57 +1,133 @@
 /**
- * Voice Demo
+ * Validation Bench
  *
- * Minimal UI: Start, Stop, list of available scenarios, event log.
- * No domain-specific components -- pure demo/test harness.
- *
- * As of PR-9a: no longer overrides console.log. Instead, registers
- * its own LogSink on the shared LogDispatcher to render entries into
- * the page, alongside whatever other sinks (e.g. ConsoleLogSink) are
- * already registered in Bootstrap.
+ * Main UI: Session Panel, Controls, Live Observer, Verification, Report.
  */
 
-import type { DemoApp } from "./Bootstrap"
-import type { LogEntry, LogSink } from "../../../packages/execution-log/dist/index"
+import type { BenchApp } from "./Bootstrap"
+import type { SessionMeta } from "./SessionPanel"
+import { renderSessionPanel } from "./SessionPanel"
+import { buildReport } from "./ReportBuilder"
+import { VerificationRunner } from "../../../packages/verification/dist/index"
 
-export function mountApp(root: HTMLElement, app: DemoApp): void {
+export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.innerHTML = `
-        <div style="font-family: sans-serif; padding: 1rem;">
-            <h1>Voice Demo</h1>
-            <button id="start-btn">Start</button>
-            <button id="stop-btn">Stop</button>
-            <p>Status: <span id="status">idle</span></p>
-            <h3>Log</h3>
-            <pre id="log" style="background:#111;color:#0f0;padding:1rem;height:300px;overflow:auto;"></pre>
+        <div style="font-family:sans-serif;padding:1rem;max-width:900px">
+            <h1>Validation Bench</h1>
+
+            <div id="session-root"></div>
+
+            <div style="margin:0.5rem 0;font-weight:bold">
+                Status: <span id="conn-label">—</span>
+            </div>
+
+            <div style="margin:1rem 0">
+                <button id="btn-connect">Connect</button>
+                <button id="btn-start">Start</button>
+                <button id="btn-stop">Stop</button>
+                <button id="btn-run-all">Run All</button>
+                <button id="btn-send">Send Report</button>
+            </div>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <h3>Live Observer</h3>
+                    <p>Channel State: <span id="obs-state">—</span></p>
+                </div>
+                <div>
+                    <h3>Verification</h3>
+                    <div id="verification-result">—</div>
+                </div>
+            </div>
+
+            <h3>Execution Log</h3>
+            <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
+
+            <h3>JSON Report</h3>
+            <pre id="json-report" style="background:#111;color:#0ff;padding:1rem;height:200px;overflow:auto"></pre>
         </div>
     `
 
-    const startBtn = root.querySelector<HTMLButtonElement>("#start-btn")!
-    const stopBtn = root.querySelector<HTMLButtonElement>("#stop-btn")!
-    const statusEl = root.querySelector<HTMLSpanElement>("#status")!
-    const logEl = root.querySelector<HTMLPreElement>("#log")!
+    const sessionRoot = root.querySelector<HTMLElement>("#session-root")!
+    const getMeta = renderSessionPanel(sessionRoot)
 
-    function appendLog(line: string): void {
-        logEl.textContent += line + "\n"
-        logEl.scrollTop = logEl.scrollHeight
+    const connLabel = root.querySelector<HTMLSpanElement>("#conn-label")!
+    const obsState = root.querySelector<HTMLSpanElement>("#obs-state")!
+    const verificationResult = root.querySelector<HTMLDivElement>("#verification-result")!
+    const execLogEl = root.querySelector<HTMLPreElement>("#exec-log")!
+    const jsonReportEl = root.querySelector<HTMLPreElement>("#json-report")!
+
+    let startedAt = new Date().toISOString()
+    let lastReport: unknown = null
+    let lastMeta: SessionMeta | null = null
+
+    function appendLog(entry: { kind: string; payload: unknown }): void {
+        execLogEl.textContent += `[${entry.kind}] ${JSON.stringify(entry.payload)}\n`
+        execLogEl.scrollTop = execLogEl.scrollHeight
     }
 
-    const domSink: LogSink = {
-        write(entry: LogEntry): void {
-            appendLog(`[${entry.kind}] ${JSON.stringify(entry.payload)}`)
-        }
-    }
-
-    app.dispatcher.register(domSink)
-
-    startBtn.addEventListener("click", async () => {
-        await app.channel.start()
-        statusEl.textContent = app.channel.getState()
+    root.querySelector("#btn-connect")!.addEventListener("click", async () => {
+        const meta = getMeta()
+        lastMeta = meta
+        const session = await app.backend.connect(
+            "https://your-backend.example.com",
+            "test-user",
+            "test-password"
+        )
+        connLabel.textContent = session.status
     })
 
-    stopBtn.addEventListener("click", async () => {
+    root.querySelector("#btn-start")!.addEventListener("click", async () => {
+        startedAt = new Date().toISOString()
+        app.executionLog.clear()
+        execLogEl.textContent = ""
+        await app.channel.start()
+        obsState.textContent = app.channel.getState()
+    })
+
+    root.querySelector("#btn-stop")!.addEventListener("click", async () => {
         await app.channel.stop()
-        statusEl.textContent = app.channel.getState()
+        obsState.textContent = app.channel.getState()
+    })
+
+    root.querySelector("#btn-run-all")!.addEventListener("click", () => {
+        const meta = lastMeta ?? getMeta()
+        const runner = new VerificationRunner(app.executionLog)
+
+        const verificationScenarios = app.registry.list().map(sc => ({
+            id: sc.name,
+            name: sc.name,
+            expectations: []
+        }))
+
+        const verification = runner.runAll(verificationScenarios)
+
+        verificationResult.innerHTML = verification.failed === 0
+            ? `<span style="color:green">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
+            : `<span style="color:red">❌ FAIL (${verification.failed} errors)</span><br>${
+                verification.errors.map(e => `• ${e}`).join("<br>")
+              }`
+
+        const entries = app.executionLog.getEntries()
+        entries.forEach(e => appendLog(e))
+
+        const report = buildReport(meta, startedAt, verification, entries)
+        lastReport = report
+        jsonReportEl.textContent = JSON.stringify(report, null, 2)
+    })
+
+    root.querySelector("#btn-send")!.addEventListener("click", async () => {
+        if (!lastReport) {
+            alert("Run All first!")
+            return
+        }
+        const ok = await app.backend.sendReport(
+            "https://your-backend.example.com",
+            lastReport,
+            "e_id_placeholder"
+        )
+        alert(ok ? "Report sent!" : "Send failed!")
     })
 
 }

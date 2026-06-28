@@ -1,20 +1,10 @@
 /**
- * Voice Demo
+ * Validation Bench
  *
- * Records the Action/Event/Speak stream into the shared
- * ExecutionLog, instead of writing to console directly.
- *
- * Pure debugging aid -- contains no business logic. Where output
- * actually ends up (console, DOM, memory) is decided by whichever
- * LogSink implementations are registered on the log/dispatcher in
- * Bootstrap -- this class only knows how to describe what happened.
+ * Logs actions, events and speak calls into ExecutionLog.
  */
 
-import type {
-    InteractionAction,
-    InteractionEvent
-} from "../../../packages/interaction-contract/dist/index"
-
+import type { InteractionAction, InteractionEvent } from "../../../packages/interaction-contract/dist/index"
 import type { ExecutionLog } from "../../../packages/execution-log/dist/index"
 
 export class DemoLogger {
@@ -22,15 +12,15 @@ export class DemoLogger {
     constructor(private readonly log: ExecutionLog) {}
 
     logAction(action: InteractionAction): void {
-        this.log.append("action", { type: action.type })
+        this.log.add("Action", { type: action.type, payload: action.payload })
     }
 
     logEvent(event: InteractionEvent): void {
-        this.log.append("event", { type: event.type })
+        this.log.add("Event", { type: event.type, payload: event.payload })
     }
 
     logSpeak(text: string): void {
-        this.log.append("speak", { text })
+        this.log.add("Speak", { text })
     }
 
 }
