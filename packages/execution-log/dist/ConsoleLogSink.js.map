@@ -1,0 +1,1 @@
+{"version":3,"file":"ConsoleLogSink.js","sourceRoot":"","sources":["../src/ConsoleLogSink.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAKH,MAAM,OAAO,cAAc;IAEvB,KAAK,CAAC,KAAe;QACjB,OAAO,CAAC,GAAG,CAAC,IAAI,KAAK,CAAC,IAAI,GAAG,EAAE,KAAK,CAAC,OAAO,CAAC,CAAA;IACjD,CAAC;CAEJ"}

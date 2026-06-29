@@ -1,0 +1,1 @@
+{"version":3,"file":"VerificationReport.d.ts","sourceRoot":"","sources":["../src/VerificationReport.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,kBAAkB,EAAE,MAAM,sBAAsB,CAAA;AAE9D,MAAM,WAAW,kBAAkB;IAC/B,cAAc,EAAE,MAAM,CAAA;IACtB,MAAM,EAAE,MAAM,CAAA;IACd,MAAM,EAAE,MAAM,CAAA;IACd,OAAO,EAAE,kBAAkB,EAAE,CAAA;IAC7B,MAAM,EAAE,MAAM,EAAE,CAAA;IAChB,eAAe,EAAE,MAAM,CAAA;CAC1B"}

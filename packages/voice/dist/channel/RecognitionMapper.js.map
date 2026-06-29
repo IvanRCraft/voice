@@ -1,0 +1,1 @@
+{"version":3,"file":"RecognitionMapper.js","sourceRoot":"","sources":["../../src/channel/RecognitionMapper.ts"],"names":[],"mappings":"AAAA;;;;;;;;GAQG;AAWH,MAAM,OAAO,wBAAwB;IAEjC,GAAG,CAAC,MAAyB;QAEzB,OAAO;YACH,IAAI,EAAE,kBAAkB;YACxB,OAAO,EAAE;gBACL,IAAI,EAAE,MAAM,CAAC,IAAI;gBACjB,UAAU,EAAE,MAAM,CAAC,UAAU;gBAC7B,QAAQ,EAAE,MAAM,CAAC,QAAQ;aAC5B;SACJ,CAAA;IAEL,CAAC;CAEJ"}
