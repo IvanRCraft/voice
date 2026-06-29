@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Validation Bench
  *
  * Main UI: Session Panel, Controls, Live Observer, Verification, Report.
@@ -15,13 +15,10 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     root.innerHTML = `
         <div style="font-family:sans-serif;padding:1rem;max-width:900px">
             <h1>Validation Bench</h1>
-
             <div id="session-root"></div>
-
             <div style="margin:0.5rem 0;font-weight:bold">
-                Status: <span id="conn-label">—</span>
+                Status: <span id="conn-label">-</span>
             </div>
-
             <div style="margin:1rem 0">
                 <button id="btn-connect">Connect</button>
                 <button id="btn-start">Start</button>
@@ -29,21 +26,18 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
                 <button id="btn-run-all">Run All</button>
                 <button id="btn-send">Send Report</button>
             </div>
-
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
                 <div>
                     <h3>Live Observer</h3>
-                    <p>Channel State: <span id="obs-state">—</span></p>
+                    <p>Channel State: <span id="obs-state">-</span></p>
                 </div>
                 <div>
                     <h3>Verification</h3>
-                    <div id="verification-result">—</div>
+                    <div id="verification-result">-</div>
                 </div>
             </div>
-
             <h3>Execution Log</h3>
             <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
-
             <h3>JSON Report</h3>
             <pre id="json-report" style="background:#111;color:#0ff;padding:1rem;height:200px;overflow:auto"></pre>
         </div>
@@ -51,7 +45,6 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     const sessionRoot = root.querySelector<HTMLElement>("#session-root")!
     const getMeta = renderSessionPanel(sessionRoot)
-
     const connLabel = root.querySelector<HTMLSpanElement>("#conn-label")!
     const obsState = root.querySelector<HTMLSpanElement>("#obs-state")!
     const verificationResult = root.querySelector<HTMLDivElement>("#verification-result")!
@@ -63,7 +56,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     let lastMeta: SessionMeta | null = null
 
     function appendLog(entry: { kind: string; payload: unknown }): void {
-        execLogEl.textContent += `[${entry.kind}] ${JSON.stringify(entry.payload)}\n`
+        execLogEl.textContent += "[" + entry.kind + "] " + JSON.stringify(entry.payload) + "\n"
         execLogEl.scrollTop = execLogEl.scrollHeight
     }
 
@@ -71,8 +64,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         const meta = getMeta()
         lastMeta = meta
         const session = await app.backend.connect(
-            "https://your-backend.example.com",
-            "meta.login,
+            meta.backendUrl,
+            meta.login,
             meta.password
         )
         connLabel.textContent = session.status
@@ -94,40 +87,26 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     root.querySelector("#btn-run-all")!.addEventListener("click", () => {
         const meta = lastMeta ?? getMeta()
         const runner = new VerificationRunner(app.executionLog)
-
         const verificationScenarios = app.registry.list().map(sc => ({
             id: sc.name,
             name: sc.name,
             expectations: []
         }))
-
         const verification = runner.runAll(verificationScenarios)
-
         verificationResult.innerHTML = verification.failed === 0
-            ? `<span style="color:green">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
-            : `<span style="color:red">❌ FAIL (${verification.failed} errors)</span><br>${
-                verification.errors.map(e => `• ${e}`).join("<br>")
-              }`
-
+            ? "<span style='color:green'>PASS (" + verification.passed + "/" + verification.totalScenarios + ")</span>"
+            : "<span style='color:red'>FAIL (" + verification.failed + " errors)</span>"
         const entries = app.executionLog.getEntries()
         entries.forEach(e => appendLog(e))
-
         const report = buildReport(meta, startedAt, verification, entries)
         lastReport = report
         jsonReportEl.textContent = JSON.stringify(report, null, 2)
     })
 
     root.querySelector("#btn-send")!.addEventListener("click", async () => {
-        if (!lastReport) {
-            alert("Run All first!")
-            return
-        }
-        const ok = await app.backend.sendReport(
-            "https://your-backend.example.com",
-            lastReport,
-            "e_id_placeholder"
-        )
+        if (!lastReport) { alert("Run All first!"); return }
+        const meta = lastMeta ?? getMeta()
+        const ok = await app.backend.sendReport(meta.backendUrl, lastReport, "e_id_placeholder")
         alert(ok ? "Report sent!" : "Send failed!")
     })
-
 }
