@@ -108,7 +108,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         const meta = getMeta()
         lastMeta = meta
         const session = await app.backend.connect(
-            "https://your-backend.example.com",
+            "https://ibronevik.ru/taxi/c/gruzvill",
             "voice.test",
             "test-password"
         )
