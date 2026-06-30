@@ -202,7 +202,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         const ok = await app.backend.sendReport(
             "https://ibronevik.ru/taxi/c/gruzvill",
             lastReport,
-            "e_id_placeholder"
+            "val_potapov@mail.ru"
         )
         alert(ok ? "✅ Report sent!" : "❌ Send failed!")
     })

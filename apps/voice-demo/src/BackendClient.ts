@@ -82,7 +82,7 @@ export class BackendClient {
 
     }
 
-    async sendReport(baseUrl: string, report: unknown, eId: string): Promise<boolean> {
+    async sendReport(baseUrl: string, report: unknown, recipientEmail: string): Promise<boolean> {
 
         if (!this.session || this.session.status !== "connected") {
             return false
@@ -98,7 +98,7 @@ export class BackendClient {
             params.set("subject", "Validation Report")
             params.set("body", "See attached JSON report.")
             params.set("file", file)
-            params.set("e_id", eId)
+            params.set("e_id", recipientEmail) 
 
             const res = await fetch(`${baseUrl}/api/v1/mail`, {
                 method: "POST",
