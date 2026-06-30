@@ -8,6 +8,12 @@
  * Auth flow (per backend documentation):
  *  1. POST /auth (form-urlencoded: login, password, type) -> auth_hash
  *  2. POST /token (form-urlencoded: auth_hash) -> token, u_hash
+ *
+ * Uses URLSearchParams as fetch body instead of an explicit
+ * Content-Type header. The browser sets
+ * "application/x-www-form-urlencoded;charset=UTF-8" automatically,
+ * which some backends (and CORS preflight configs) accept more
+ * reliably than a manually-set header.
  */
 
 export type ConnectionStatus = "connected" | "auth-failed" | "mail-unavailable"
@@ -18,12 +24,6 @@ export interface BackendSession {
     status: ConnectionStatus
 }
 
-function encodeFormData(obj: Record<string, string>): string {
-    return Object.keys(obj)
-        .map(key => encodeURIComponent(key) + "=" + encodeURIComponent(obj[key]))
-        .join("&")
-}
-
 export class BackendClient {
 
     private session: BackendSession | null = null
@@ -31,10 +31,14 @@ export class BackendClient {
     async connect(baseUrl: string, login: string, password: string): Promise<BackendSession> {
 
         try {
+            const authParams = new URLSearchParams()
+            authParams.set("login", login)
+            authParams.set("password", password)
+            authParams.set("type", "e-mail")
+
             const authRes = await fetch(`${baseUrl}/api/v1/auth`, {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: encodeFormData({ login, password, type: "e-mail" })
+                body: authParams
             })
 
             if (!authRes.ok) {
@@ -49,10 +53,12 @@ export class BackendClient {
                 return this.session
             }
 
+            const tokenParams = new URLSearchParams()
+            tokenParams.set("auth_hash", authData.auth_hash)
+
             const tokenRes = await fetch(`${baseUrl}/api/v1/token`, {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: encodeFormData({ auth_hash: authData.auth_hash })
+                body: tokenParams
             })
 
             if (!tokenRes.ok) {
@@ -86,17 +92,17 @@ export class BackendClient {
         const file = btoa(unescape(encodeURIComponent(json)))
 
         try {
+            const params = new URLSearchParams()
+            params.set("token", this.session.token)
+            params.set("u_hash", this.session.u_hash)
+            params.set("subject", "Validation Report")
+            params.set("body", "See attached JSON report.")
+            params.set("file", file)
+            params.set("e_id", eId)
+
             const res = await fetch(`${baseUrl}/api/v1/mail`, {
                 method: "POST",
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: encodeFormData({
-                    token: this.session.token,
-                    u_hash: this.session.u_hash,
-                    subject: "Validation Report",
-                    body: "See attached JSON report.",
-                    file,
-                    e_id: eId
-                })
+                body: params
             })
             return res.ok
         } catch {
