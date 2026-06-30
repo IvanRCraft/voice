@@ -200,7 +200,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     root.querySelector("#btn-send")!.addEventListener("click", async () => {
         if (!lastReport) { alert("Run All first!"); return }
         const ok = await app.backend.sendReport(
-            "https://your-backend.example.com",
+            "https://ibronevik.ru/taxi/c/gruzvill",
             lastReport,
             "e_id_placeholder"
         )
