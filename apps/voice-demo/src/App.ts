@@ -109,8 +109,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         lastMeta = meta
         const session = await app.backend.connect(
             "https://ibronevik.ru/taxi/c/gruzvill",
-            "voice.test",
-            "test-password"
+            "testvoice999888@example.com",
+            "Test12345"
         )
         connLabel.textContent = session.status === "connected" ? "● Connected" : "✗ " + session.status
         mailLabel.textContent = session.status === "connected" ? "Ready" : "—"
