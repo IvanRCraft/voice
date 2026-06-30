@@ -4,9 +4,14 @@
  * Verifies a VerificationScenario by checking the sequence of
  * entries in an ExecutionLog against the scenario's expectations.
  *
- * Checks both kind and payload (if provided).
+ * Checks both kind and payload (if provided) when searching for a
+ * match -- this prevents an expectation matching the wrong entry of
+ * the same kind earlier in the log (e.g. a different scenario's
+ * Action with the same kind "Action" but a different type).
+ *
  * Measures duration from first matched entry to last matched entry,
  * not from verification start.
+ *
  * Never writes to ExecutionLog -- only reads it.
  */
 
@@ -48,18 +53,6 @@ export class ScenarioVerifier {
             if (!firstTimestamp) firstTimestamp = entry.timestamp
             lastTimestamp = entry.timestamp
 
-            if (
-                expectation.payload !== undefined &&
-                !this.payloadMatches(entry.payload, expectation.payload)
-            ) {
-                errors.push({
-                    message: `Payload mismatch for kind "${expectation.kind}"`,
-                    expected: expectation.payload,
-                    actual: entry.payload,
-                    index: i
-                })
-            }
-
             cursor = matchIndex + 1
         }
 
@@ -78,8 +71,7 @@ export class ScenarioVerifier {
 
     /**
      * Partial match: every key present in `expected` must match in `actual`.
-     * Extra keys in `actual` are ignored. This allows expectations like
-     * { type: "voice.recognized" } to match a richer actual payload.
+     * Extra keys in `actual` are ignored.
      */
     private payloadMatches(actual: unknown, expected: unknown): boolean {
         if (typeof expected !== "object" || expected === null) {
@@ -95,15 +87,23 @@ export class ScenarioVerifier {
         )
     }
 
+    /**
+     * Finds the next entry whose kind matches AND whose payload
+     * matches (if expectation.payload is provided). This avoids
+     * matching an entry of the right kind but wrong content,
+     * which would otherwise consume the cursor incorrectly.
+     */
     private findNextMatch(
         entries: ReadonlyArray<{ kind: string; payload: unknown; timestamp: string }>,
         fromIndex: number,
         expectation: VerificationExpectation
     ): number {
         for (let i = fromIndex; i < entries.length; i++) {
-            if (entries[i].kind === expectation.kind) {
-                return i
+            if (entries[i].kind !== expectation.kind) continue
+            if (expectation.payload !== undefined && !this.payloadMatches(entries[i].payload, expectation.payload)) {
+                continue
             }
+            return i
         }
         return -1
     }
