@@ -65,54 +65,34 @@
                 </div>
             </div>
         </div>
-    `,()=>({tester:e.querySelector(`#s-tester`).value,language:e.querySelector(`#s-language`).value,recognitionProvider:e.querySelector(`#s-recognition`).value,speechProvider:e.querySelector(`#s-speech`).value,scenarioSet:e.querySelector(`#s-scenario-set`).value,build:e.querySelector(`#s-build`).value,commit:e.querySelector(`#s-commit`).value,environment:e.querySelector(`#s-env`).value})}function S(){let e=navigator.userAgent;return{browser:e,operatingSystem:C(e)}}function C(e){return e.includes(`Windows`)?`Windows`:e.includes(`Mac OS`)?`macOS`:e.includes(`Android`)?`Android`:e.includes(`iPhone`)||e.includes(`iPad`)?`iOS`:e.includes(`Linux`)?`Linux`:`Unknown`}function w(e,t,n,r){let i=new Date().toISOString(),{browser:a,operatingSystem:o}=S();return{tester:e.tester,language:e.language,build:e.build,commit:e.commit,browser:a,operatingSystem:o,scenarioSet:e.scenarioSet,environment:e.environment,startedAt:t,finishedAt:i,durationMs:Date.now()-new Date(t).getTime(),verification:n,executionLog:r}}var T=class{log;constructor(e){this.log=e}verify(e){let t=[],n=this.log.getEntries(),r=0,i=null,a=null;for(let o=0;o<e.expectations.length;o++){let s=e.expectations[o],c=this.findNextMatch(n,r,s);if(c===-1){s.optional||t.push({message:`Expected entry of kind "${s.kind}" not found`,expected:s,index:o});continue}let l=n[c];i||=l.timestamp,a=l.timestamp,r=c+1}let o=i&&a?new Date(a).getTime()-new Date(i).getTime():0;return{scenario:e,passed:t.length===0,durationMs:o,errors:t}}payloadMatches(e,t){if(typeof t!=`object`||!t)return e===t;if(typeof e!=`object`||!e)return!1;let n=t,r=e;return Object.keys(n).every(e=>JSON.stringify(r[e])===JSON.stringify(n[e]))}findNextMatch(e,t,n){for(let r=t;r<e.length;r++)if(e[r].kind===n.kind&&!(n.payload!==void 0&&!this.payloadMatches(e[r].payload,n.payload)))return r;return-1}},E=class{verifier;constructor(e){this.verifier=new T(e)}runOne(e){return this.verifier.verify(e)}runMany(e){let t=e.map(e=>this.verifier.verify(e));return this.buildReport(t)}runAll(e){return this.runMany(e)}buildReport(e){return{totalScenarios:e.length,passed:e.filter(e=>e.passed).length,failed:e.filter(e=>!e.passed).length,results:e,errors:e.flatMap(e=>e.errors.map(e=>e.message)),totalDurationMs:e.reduce((e,t)=>e+t.durationMs,0)}}},D=[`voice.recognized`,`interaction.echo`,`interaction.delayed`];function O(e,t){e.innerHTML=`
+    `,()=>({tester:e.querySelector(`#s-tester`).value,language:e.querySelector(`#s-language`).value,recognitionProvider:e.querySelector(`#s-recognition`).value,speechProvider:e.querySelector(`#s-speech`).value,scenarioSet:e.querySelector(`#s-scenario-set`).value,build:e.querySelector(`#s-build`).value,commit:e.querySelector(`#s-commit`).value,environment:e.querySelector(`#s-env`).value})}function S(){let e=navigator.userAgent;return{browser:e,operatingSystem:C(e)}}function C(e){return e.includes(`Windows`)?`Windows`:e.includes(`Mac OS`)?`macOS`:e.includes(`Android`)?`Android`:e.includes(`iPhone`)||e.includes(`iPad`)?`iOS`:e.includes(`Linux`)?`Linux`:`Unknown`}function w(e,t,n,r){let i=new Date().toISOString(),{browser:a,operatingSystem:o}=S();return{tester:e.tester,language:e.language,build:e.build,commit:e.commit,browser:a,operatingSystem:o,scenarioSet:e.scenarioSet,environment:e.environment,startedAt:t,finishedAt:i,durationMs:Date.now()-new Date(t).getTime(),verification:n,executionLog:r}}var T=class{log;constructor(e){this.log=e}verify(e){let t=[],n=this.log.getEntries(),r=0,i=null,a=null;for(let o=0;o<e.expectations.length;o++){let s=e.expectations[o],c=this.findNextMatch(n,r,s);if(c===-1){s.optional||t.push({message:`Expected entry of kind "${s.kind}" not found`,expected:s,index:o});continue}let l=n[c];i||=l.timestamp,a=l.timestamp,r=c+1}let o=i&&a?new Date(a).getTime()-new Date(i).getTime():0;return{scenario:e,passed:t.length===0,durationMs:o,errors:t}}payloadMatches(e,t){if(typeof t!=`object`||!t)return e===t;if(typeof e!=`object`||!e)return!1;let n=t,r=e;return Object.keys(n).every(e=>JSON.stringify(r[e])===JSON.stringify(n[e]))}findNextMatch(e,t,n){for(let r=t;r<e.length;r++)if(e[r].kind===n.kind&&!(n.payload!==void 0&&!this.payloadMatches(e[r].payload,n.payload)))return r;return-1}},E=class{verifier;constructor(e){this.verifier=new T(e)}runOne(e){return this.verifier.verify(e)}runMany(e){let t=e.map(e=>this.verifier.verify(e));return this.buildReport(t)}runAll(e){return this.runMany(e)}buildReport(e){return{totalScenarios:e.length,passed:e.filter(e=>e.passed).length,failed:e.filter(e=>!e.passed).length,results:e,errors:e.flatMap(e=>e.errors.map(e=>e.message)),totalDurationMs:e.reduce((e,t)=>e+t.durationMs,0)}}};function D(e,t){e.innerHTML=`
         <div style="font-family:sans-serif;padding:1rem;max-width:900px">
             <h1>Validation Bench</h1>
-
             <div id="session-root"></div>
-
             <div style="margin:0.5rem 0;font-weight:bold">
-                Backend: <span id="conn-label">—</span>
-                &nbsp;|&nbsp; Mail: <span id="mail-label">—</span>
+                Status: <span id="conn-label">-</span>
             </div>
-
             <div style="margin:1rem 0">
-                <div style="margin-top:0.5rem">
-                    <button id="btn-connect">Connect</button>
-                    <button id="btn-start">▶ Start</button>
-                    <button id="btn-stop">■ Stop</button>
-                    <button id="btn-run-all">▶ Run All</button>
-                </div>
-                <div style="margin-top:0.5rem">
-                    <label>Inject action:
-                        <select id="inject-select">
-                            ${D.map(e=>`<option value="${e}">${e}</option>`).join(``)}
-                        </select>
-                    </label>
-                    <button id="btn-inject">Send</button>
-                </div>
-            </div>
-
-            <div style="margin:0.5rem 0">
-                <b>Channel State:</b> <span id="obs-state">—</span>
-                &nbsp;|&nbsp; <b>Progress:</b> <span id="obs-progress">—</span>
-            </div>
-
-            <div>
-                <h3>Verification</h3>
-                <div id="verification-result">—</div>
-            </div>
-
-            <h3>Execution Log</h3>
-            <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
-
-            <h3>JSON Report</h3>
-            <pre id="json-report" style="background:#111;color:#0ff;padding:1rem;height:200px;overflow:auto"></pre>
-
-            <div style="margin-top:1rem">
-                <button id="btn-download">Download JSON</button>
+                <button id="btn-connect">Connect</button>
+                <button id="btn-start">Start</button>
+                <button id="btn-stop">Stop</button>
+                <button id="btn-run-all">Run All</button>
                 <button id="btn-send">Send Report</button>
             </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+                <div>
+                    <h3>Live Observer</h3>
+                    <p>Channel State: <span id="obs-state">-</span></p>
+                </div>
+                <div>
+                    <h3>Verification</h3>
+                    <div id="verification-result">-</div>
+                </div>
+            </div>
+            <h3>Execution Log</h3>
+            <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
+            <h3>JSON Report</h3>
+            <pre id="json-report" style="background:#111;color:#0ff;padding:1rem;height:200px;overflow:auto"></pre>
         </div>
-    `;let n=x(e.querySelector(`#session-root`)),r=e.querySelector(`#conn-label`),i=e.querySelector(`#mail-label`),a=e.querySelector(`#obs-state`),o=e.querySelector(`#obs-progress`),s=e.querySelector(`#verification-result`),c=e.querySelector(`#exec-log`),l=e.querySelector(`#json-report`),u=e.querySelector(`#inject-select`),d=new Date().toISOString(),f=null,p=null;function m(){c.textContent=t.executionLog.getEntries().map(e=>`[${e.kind}] ${JSON.stringify(e.payload)}`).join(`
-`),c.scrollTop=c.scrollHeight}t.channel.onAction=e=>{t.logger.logAction(e),m()},t.channel.onEvent=e=>{t.logger.logEvent(e),m()},t.channel.onSpeak=e=>{t.logger.logSpeak(e),m()},e.querySelector(`#btn-connect`).addEventListener(`click`,async()=>{p=n();let e=await t.backend.connect(`https://ibronevik.ru/taxi/c/gruzvill`,`testvoice999888@example.com`,`Test12345`);r.textContent=e.status===`connected`?`● Connected`:`✗ `+e.status,i.textContent=e.status===`connected`?`Ready`:`—`}),e.querySelector(`#btn-start`).addEventListener(`click`,async()=>{d=new Date().toISOString(),t.executionLog.clear(),c.textContent=``,await t.channel.start(),a.textContent=t.channel.getState()}),e.querySelector(`#btn-stop`).addEventListener(`click`,async()=>{await t.channel.stop(),a.textContent=t.channel.getState()}),e.querySelector(`#btn-inject`).addEventListener(`click`,async()=>{let e=u.value;await t.channel.injectAction({type:e,payload:{}}),m()}),e.querySelector(`#btn-run-all`).addEventListener(`click`,async()=>{let e=p??n();o.textContent=`Running scenario 1 of 3`;for(let e=0;e<D.length;e++)o.textContent=`Running scenario ${e+1} of ${D.length}`,await t.channel.injectAction({type:D[e],payload:{}}),await new Promise(e=>setTimeout(e,700)),m();o.textContent=`Done`;let r=new E(t.executionLog),i=t.registry.list().map(e=>{let t=e.trigger,n=e.steps.filter(e=>e.kind===`emit`),r=[{kind:`Action`,payload:{type:t},optional:!1},...n.flatMap(e=>[{kind:`Event`,payload:{type:e.event.type},optional:!1},{kind:`Speak`,optional:!1}])];return{id:e.name,name:e.name,expectations:r}}),a=r.runAll(i);s.innerHTML=a.failed===0?`<span style="color:green">✅ PASS (${a.passed}/${a.totalScenarios})</span>`:`<span style="color:red">❌ FAIL (${a.failed} errors)</span><br>${a.errors.map(e=>`• ${e}`).join(`<br>`)}`;let c=t.executionLog.getEntries(),u=w(e,d,a,c);f=u,l.textContent=JSON.stringify(u,null,2)}),e.querySelector(`#btn-download`).addEventListener(`click`,()=>{if(!f){alert(`Run All first!`);return}let e=new Blob([JSON.stringify(f,null,2)],{type:`application/json`}),t=URL.createObjectURL(e),n=document.createElement(`a`);n.href=t,n.download=`validation-report.json`,n.click(),URL.revokeObjectURL(t)}),e.querySelector(`#btn-send`).addEventListener(`click`,async()=>{if(!f){alert(`Run All first!`);return}let e=await t.backend.sendReport(`https://ibronevik.ru/taxi/c/gruzvill`,f,`e_id_placeholder`);alert(e?`✅ Report sent!`:`❌ Send failed!`)})}var k=b();O(document.querySelector(`#app`),k);
+    `;let n=x(e.querySelector(`#session-root`)),r=e.querySelector(`#conn-label`),i=e.querySelector(`#obs-state`),a=e.querySelector(`#verification-result`),o=e.querySelector(`#exec-log`),s=e.querySelector(`#json-report`),c=new Date().toISOString(),l=null,u=null;function d(e){o.textContent+=`[`+e.kind+`] `+JSON.stringify(e.payload)+`
+`,o.scrollTop=o.scrollHeight}e.querySelector(`#btn-connect`).addEventListener(`click`,async()=>{let e=n();u=e,r.textContent=(await t.backend.connect(e.backendUrl,e.login,e.password)).status}),e.querySelector(`#btn-start`).addEventListener(`click`,async()=>{c=new Date().toISOString(),t.executionLog.clear(),o.textContent=``,await t.channel.start(),i.textContent=t.channel.getState()}),e.querySelector(`#btn-stop`).addEventListener(`click`,async()=>{await t.channel.stop(),i.textContent=t.channel.getState()}),e.querySelector(`#btn-run-all`).addEventListener(`click`,async()=>{let e=u??n();c=new Date().toISOString(),t.executionLog.clear(),o.textContent=``;let r=[`voice.recognized`,`interaction.echo`,`interaction.delayed`],i=t.interaction.subscribe(e=>{t.logger.logEvent(e)});for(let e of r){let n={type:e,payload:{}};t.logger.logAction(n),await t.interaction.dispatch(n)}i();let f=new E(t.executionLog),p=t.registry.list().map(e=>({id:e.name,name:e.name,expectations:[]})),m=f.runAll(p);a.innerHTML=m.failed===0?`<span style='color:green'>PASS (`+m.passed+`/`+m.totalScenarios+`)</span>`:`<span style='color:red'>FAIL (`+m.failed+` errors)</span>`;let h=t.executionLog.getEntries();h.forEach(e=>d(e));let g=w(e,c,m,h);l=g,s.textContent=JSON.stringify(g,null,2)}),e.querySelector(`#btn-send`).addEventListener(`click`,async()=>{if(!l){alert(`Run All first!`);return}let e=u??n(),r=await t.backend.sendReport(e.backendUrl,l,`e_id_placeholder`);alert(r?`Report sent!`:`Send failed!`)})}var O=b();D(document.querySelector(`#app`),O);
