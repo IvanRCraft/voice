@@ -13,6 +13,9 @@ import { ReportHistory, type ReportHistoryEntry } from "./ReportHistory"
 
 const SCENARIO_TRIGGERS = ["voice.recognized", "interaction.echo", "interaction.delayed"]
 
+// Константа для базового URL согласно документации API v1
+const API_URL_PREFIX = "https://ibronevik.ru/taxi/c/gruzvill/api/v1/";
+
 export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     const reportHistory = new ReportHistory()
@@ -130,8 +133,9 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     root.querySelector("#btn-connect")!.addEventListener("click", async () => {
         const meta = getMeta()
         lastMeta = meta
+        // Используем корректный API_URL_PREFIX с эндпоинтом auth
         const session = await app.backend.connect(
-            "https://ibronevik.ru/taxi/c/gruzvill",
+            API_URL_PREFIX + "auth",
             "fizikgeo@gmail.com",
             "Test12345"
         )
@@ -217,12 +221,14 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.querySelector("#btn-send")!.addEventListener("click", async () => {
         if (!lastReport) { alert("Run All first!"); return }
+        // Используем корректный API_URL_PREFIX с эндпоинтом data
         const result = await app.backend.sendReport(
-            "https://ibronevik.ru/taxi/c/gruzvill",
+            API_URL_PREFIX + "data",
             lastReport,
             "2"
         )
-        alert(ok ? "✅ Report sent!" : "❌ Send failed!")
+        // Исправлен баг: заменено несуществующее 'ok' на 'result'
+        alert(result ? "✅ Report sent!" : "❌ Send failed!")
     })
 
 }
