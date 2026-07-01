@@ -9,7 +9,7 @@ import type { SessionMeta } from "./SessionPanel"
 import { renderSessionPanel } from "./SessionPanel"
 import { VerificationRunner } from "../../../packages/verification/dist/index"
 import { buildValidationReport, generateReportFilename } from "./ValidationReportManager"
-import { ReportHistory } from "./ReportHistory"
+import { ReportHistory, type ReportHistoryEntry } from "./ReportHistory"
 
 const SCENARIO_TRIGGERS = ["voice.recognized", "interaction.echo", "interaction.delayed"]
 
