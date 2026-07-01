@@ -23,6 +23,7 @@ export class BackendClient {
 
             const authRes = await fetch(`${baseUrl}/api/v1/auth`, {
                 method: "POST",
+                credentials: "omit",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: authParams.toString()
             })
@@ -44,6 +45,7 @@ export class BackendClient {
 
             const tokenRes = await fetch(`${baseUrl}/api/v1/token`, {
                 method: "POST",
+                credentials: "omit",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: tokenParams.toString()
             })
@@ -72,7 +74,9 @@ export class BackendClient {
     async getEmailId(baseUrl: string): Promise<string | null> {
         try {
             const query = encodeURIComponent(JSON.stringify({ site_emails: true }))
-            const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`)
+            const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`, {
+                credentials: "omit"
+            })
             if (!res.ok) return null
             const data = await res.json() as { data?: { site_emails?: Record<string, unknown> } }
             const siteEmails = data.data?.site_emails
@@ -103,6 +107,7 @@ export class BackendClient {
 
             const res = await fetch(`${baseUrl}/api/v1/mail/${emailId}/send/`, {
                 method: "POST",
+                credentials: "omit",
                 headers: { "Content-Type": "application/x-www-form-urlencoded" },
                 body: params.toString()
             })
