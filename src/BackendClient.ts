@@ -89,7 +89,10 @@ export class BackendClient {
         }
 
         const json = JSON.stringify(report)
-        const file = btoa(unescape(encodeURIComponent(json)))
+        const base64 = btoa(unescape(encodeURIComponent(json)))
+        const file = JSON.stringify([
+            { base64: data:application/json;charset=UTF-8;base64,, name: "validation-report.json" }
+        ])
 
         try {
             const params = new URLSearchParams()

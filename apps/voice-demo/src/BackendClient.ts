@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Validation Bench
  */
 
@@ -23,9 +23,7 @@ export class BackendClient {
 
             const authRes = await fetch(`${baseUrl}/api/v1/auth`, {
                 method: "POST",
-                
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: authParams.toString()
+                body: authParams
             })
 
             if (!authRes.ok) {
@@ -45,9 +43,7 @@ export class BackendClient {
 
             const tokenRes = await fetch(`${baseUrl}/api/v1/token`, {
                 method: "POST",
-                
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: tokenParams.toString()
+                body: tokenParams
             })
 
             if (!tokenRes.ok) {
@@ -74,9 +70,7 @@ export class BackendClient {
     async getEmailId(baseUrl: string): Promise<string | null> {
         try {
             const query = encodeURIComponent(JSON.stringify({ site_emails: true }))
-            const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`, {
-                
-            })
+            const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`)
             if (!res.ok) return null
             const data = await res.json() as { data?: { site_emails?: Record<string, unknown> } }
             const siteEmails = data.data?.site_emails
@@ -95,7 +89,13 @@ export class BackendClient {
         }
 
         const json = JSON.stringify(report)
-        const file = btoa(encodeURIComponent(json).replace(/%([0-9A-F]{2})/g, (_match, p1) => String.fromCharCode(parseInt(p1, 16))))
+        const base64 = btoa(unescape(encodeURIComponent(json)))
+        const file = JSON.stringify([
+            {
+                base64: `data:application/json;charset=UTF-8;base64,${base64}`,
+                name: "validation-report.json"
+            }
+        ])
 
         try {
             const params = new URLSearchParams()
@@ -103,13 +103,11 @@ export class BackendClient {
             params.set("u_hash", this.session.u_hash)
             params.set("subject", "Validation Report")
             params.set("body", "See attached JSON report.")
-            params.set("file", JSON.stringify([{ "base64": file, "name": "validation-report.json" }]))
+            params.set("file", file)
 
             const res = await fetch(`${baseUrl}/api/v1/mail/${emailId}/send/`, {
                 method: "POST",
-                
-                headers: { "Content-Type": "application/x-www-form-urlencoded" },
-                body: params.toString()
+                body: params
             })
 
             return res.ok

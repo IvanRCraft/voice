@@ -1,43 +1,38 @@
-import type { ValidationReport } from "./ValidationReportManager"
-
-export interface ReportHistoryEntry {
-    id: string
-    timestamp: string
-    status: string
-    tester: string
-    report: ValidationReport
+export interface HistoryRecord {
+  date: string;
+  status: 'PASS' | 'PASS WITH WARNINGS' | 'FAIL';
 }
 
 export class ReportHistory {
+  private storageKey = 'validation_bench_history';
 
-    private readonly entries: ReportHistoryEntry[] = []
-    private readonly maxEntries: number
+  // Tarixni yuklab olish
+  public getHistory(): HistoryRecord[] {
+    const data = localStorage.getItem(this.storageKey);
+    return data ? JSON.parse(data) : [];
+  }
 
-    constructor(maxEntries = 10) {
-        this.maxEntries = maxEntries
+  // Yangi natijani tarixga qo'shish
+  public saveRecord(status: 'PASS' | 'PASS WITH WARNINGS' | 'FAIL'): void {
+    const history = this.getHistory();
+    const newRecord: HistoryRecord = {
+      date: new Date().toISOString().split('T')[0], // YYYY-MM-DD formatda
+      status: status
+    };
+
+    // Yangi hisobotni ro'yxat boshiga qo'shamiz
+    history.unshift(newRecord);
+
+    // Faqat oxirgi 10 ta testni saqlab qolamiz (ortiqchasi o'chadi)
+    if (history.length > 10) {
+      history.pop();
     }
 
-    add(report: ValidationReport): ReportHistoryEntry {
-        const entry: ReportHistoryEntry = {
-            id: Date.now().toString(),
-            timestamp: report.session.finishedAt,
-            status: report.summary.status,
-            tester: report.session.tester,
-            report
-        }
-        this.entries.unshift(entry)
-        if (this.entries.length > this.maxEntries) {
-            this.entries.pop()
-        }
-        return entry
-    }
+    localStorage.setItem(this.storageKey, JSON.stringify(history));
+  }
 
-    getAll(): ReadonlyArray<ReportHistoryEntry> {
-        return this.entries
-    }
-
-    clear(): void {
-        this.entries.length = 0
-    }
-
+  // Tarixni tozalash (agar kerak bo'lsa)
+  public clearHistory(): void {
+    localStorage.removeItem(this.storageKey);
+  }
 }
