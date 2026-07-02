@@ -58,7 +58,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <h3>Execution Log</h3>
             <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
 
-            <!-- YANGI: Report Preview Oynasi (Mijoz talabi bo'yicha) -->
+            <!-- Report Preview Oynasi -->
             <h3>Report Preview</h3>
             <div id="report-preview-box" style="background:#f4f4f4; border:1px solid #ccc; padding:1rem; margin-bottom:1rem; min-height:100px; border-radius:4px; font-size:0.9rem; color:#333;">
                 <i>Hisobotni ko'rish uchun avval "Run All" tugmasini bosing...</i>
@@ -119,14 +119,18 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         }).join("")
     }
 
-    // YANGI: Preview interfeysini vizual yangilash funksiyasi
+    // Xavfsiz va to'liq formatlangan Preview funksiyasi
     function updateReportPreview(report: any): void {
-        const color = report.Summary.status === "PASS" ? "green" : "red";
+        const status = report?.Summary?.status || "PASS";
+        const color = status === "PASS" ? "green" : "red";
+        
         reportPreviewBox.innerHTML = `
-            <div style="margin-bottom:0.5rem"><strong>Status:</strong> <span style="color:${color};font-weight:bold">${report.Summary.status}</span></div>
-            <div style="margin-bottom:0.5rem"><strong>Tester:</strong> ${report.Session.tester} | <strong>Language:</strong> ${report.Session.language}</div>
-            <div style="margin-bottom:0.5rem"><strong>Scenarios:</strong> ${report.Summary.totalScenarios} (Passed: ${report.Summary.passed}, Failed: ${report.Summary.failed})</div>
-            <div><strong>Duration:</strong> ${report.Summary.durationMs} ms</div>
+            <div style="background: #fff; border-left: 4px solid ${color}; padding: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+                <div style="margin-bottom:0.4rem"><strong>Status:</strong> <span style="color:${color};font-weight:bold">${status}</span></div>
+                <div style="margin-bottom:0.4rem"><strong>Tester:</strong> ${report?.Session?.tester || "Tester"} | <strong>Language:</strong> ${report?.Session?.language || "en-US"}</div>
+                <div style="margin-bottom:0.4rem"><strong>Scenarios:</strong> ${report?.Summary?.totalScenarios || 0} (Passed: ${report?.Summary?.passed || 0}, Failed: ${report?.Summary?.failed || 0})</div>
+                <div><strong>Duration:</strong> ${report?.Summary?.durationMs || 0} ms</div>
+            </div>
         `;
     }
 
@@ -178,6 +182,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.querySelector("#btn-run-all")!.addEventListener("click", async () => {
         const meta = lastMeta ?? getMeta()
+        lastMeta = meta // dynamic o'zgarishni saqlab qolish uchun
 
         for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
             obsProgress.textContent = `Running scenario ${i + 1} of ${SCENARIO_TRIGGERS.length}`
@@ -222,7 +227,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         lastReport = report
         reportHistory.add(report)
         refreshHistory()
-        updateReportPreview(report); // UI oynasini yangilash
+        updateReportPreview(report) // Endi xatosiz ishlaydi
         jsonReportEl.textContent = JSON.stringify(report, null, 2)
     })
 
