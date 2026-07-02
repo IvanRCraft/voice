@@ -35,6 +35,7 @@ export class SessionController {
     beginScenario(totalSteps: number): void {
         this.progress.totalSteps = totalSteps
         this.progress.currentStep = 0
+        this.progress.progressPercent = 0
     }
 
     nextStep(): void {

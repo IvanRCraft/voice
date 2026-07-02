@@ -236,7 +236,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     function renderInteractiveState(): void {
         intSessionState.textContent = controller.getState()
         const progress = controller.getProgress()
-        intScenario.textContent = `${progress.currentScenario} / ${progress.totalScenarios}`
+        const shownScenario = Math.min(progress.currentScenario, progress.totalScenarios)
+        intScenario.textContent = `${shownScenario} / ${progress.totalScenarios}`
         intProgress.textContent = `${progress.progressPercent}%`
 
         const paused = controller.getState() === StepState.Paused
@@ -305,6 +306,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     function finishInteractiveSession(): void {
         controller.stop()
+        intPrompt.textContent = "Все сценарии пройдены."
+        intExpected.textContent = ""
         renderInteractiveState()
 
         const total = manualResults.length
