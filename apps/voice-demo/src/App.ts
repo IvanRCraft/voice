@@ -119,7 +119,6 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         }).join("")
     }
 
-    // Xavfsiz va to'liq formatlangan Preview funksiyasi
     function updateReportPreview(report: any): void {
         const status = report?.Summary?.status || "PASS";
         const color = status === "PASS" ? "green" : "red";
@@ -182,7 +181,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.querySelector("#btn-run-all")!.addEventListener("click", async () => {
         const meta = lastMeta ?? getMeta()
-        lastMeta = meta // dynamic o'zgarishni saqlab qolish uchun
+        lastMeta = meta
 
         for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
             obsProgress.textContent = `Running scenario ${i + 1} of ${SCENARIO_TRIGGERS.length}`
@@ -204,10 +203,12 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             const emitSteps = sc.steps.filter(
                 (s): s is { kind: "emit"; event: { type: string; payload: unknown } } => s.kind === "emit"
             )
+            
+            // Ikkala variantni ham beramiz (ham step, ham type) - mutloq xavfsiz va moslashuvchan tekshiruv uchun
             const expectations = [
                 { kind: "Action", payload: { type: trigger }, optional: false },
                 ...emitSteps.flatMap(step => [
-                    { kind: "Event", payload: { step: step.event.type }, optional: false },
+                    { kind: "Event", payload: { type: step.event.type, step: step.event.type }, optional: false },
                     { kind: "Speak", optional: false }
                 ])
             ]
@@ -227,7 +228,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         lastReport = report
         reportHistory.add(report)
         refreshHistory()
-        updateReportPreview(report) // Endi xatosiz ishlaydi
+        updateReportPreview(report)
         jsonReportEl.textContent = JSON.stringify(report, null, 2)
     })
 
