@@ -95,7 +95,7 @@ export class BackendClient {
         }
 
         const json = JSON.stringify(report)
-        const file = btoa(unescape(encodeURIComponent(json)))
+        const encoded = new TextEncoder().encode(json)
 
         try {
             const params = new URLSearchParams()
