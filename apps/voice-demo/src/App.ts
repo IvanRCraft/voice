@@ -1,7 +1,8 @@
 ﻿/**
- * Validation Bench - PR-9d.5
+ * Validation Bench - PR-9d
  *
- * Main UI: Session Panel, Controls, Live Observer, Verification, Report.
+ * Main UI: Session Panel, Controls, Live Observer, Verification, Report,
+ * and now Interactive Runner (step-by-step manual validation).
  */
 
 import type { BenchApp } from "./Bootstrap"
@@ -10,12 +11,25 @@ import { renderSessionPanel } from "./SessionPanel"
 import { VerificationRunner } from "../../../packages/verification/dist/index"
 import { buildValidationReport, generateReportFilename } from "./ValidationReportManager"
 import { ReportHistory, type ReportHistoryEntry } from "./ReportHistory"
+import { SessionController } from "./SessionController"
+import { StepState } from "./StepState"
+import { getInteractiveScript } from "./InteractiveScriptMap"
 
 const SCENARIO_TRIGGERS = ["voice.recognized", "interaction.echo", "interaction.delayed"]
+
+interface ManualResult {
+    trigger: string
+    recognized: boolean | null
+    heard: boolean | null
+    comment: string
+    repeated: number
+    skipped: boolean
+}
 
 export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     const reportHistory = new ReportHistory()
+    const controller = new SessionController()
 
     root.innerHTML = `
         <div style="font-family:sans-serif;padding:1rem;max-width:900px">
@@ -26,6 +40,15 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <div style="margin:0.5rem 0;font-weight:bold">
                 Backend: <span id="conn-label">—</span>
                 &nbsp;|&nbsp; Mail: <span id="mail-label">—</span>
+            </div>
+
+            <div style="margin:1rem 0">
+                <label style="font-weight:bold">Validation Mode:
+                    <select id="mode-select">
+                        <option value="automatic">Automatic</option>
+                        <option value="interactive">Interactive</option>
+                    </select>
+                </label>
             </div>
 
             <div style="margin:1rem 0">
@@ -50,6 +73,54 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
                 &nbsp;|&nbsp; <b>Progress:</b> <span id="obs-progress">—</span>
             </div>
 
+            <!-- Interactive Runner (PR-9d.2/9d.3/9d.4) -->
+            <div id="interactive-panel" style="display:none; border:1px solid #ccc; border-radius:6px; padding:1rem; margin:1rem 0; background:#fafafa">
+                <h3 style="margin-top:0">Interactive Runner</h3>
+
+                <div style="margin-bottom:0.5rem">
+                    <b>Session State:</b> <span id="int-session-state">Idle</span>
+                    &nbsp;|&nbsp; <b>Scenario:</b> <span id="int-scenario">— / —</span>
+                    &nbsp;|&nbsp; <b>Progress:</b> <span id="int-progress">0%</span>
+                </div>
+
+                <div style="background:#fff; border:1px solid #ddd; border-radius:4px; padding:0.8rem; margin-bottom:0.6rem">
+                    <div style="font-weight:bold; margin-bottom:0.3rem">Шаг</div>
+                    <div id="int-prompt" style="font-size:1.05rem; margin-bottom:0.4rem">—</div>
+                    <div id="int-expected" style="color:#555; font-size:0.9rem">—</div>
+                </div>
+
+                <div style="margin-bottom:0.6rem">
+                    <button id="int-btn-next">▶ Next Step</button>
+                    <button id="int-btn-repeat">↺ Repeat Step</button>
+                    <button id="int-btn-skip">⏭ Skip Step</button>
+                    <button id="int-btn-pause">⏸ Pause</button>
+                    <button id="int-btn-resume">⏵ Resume</button>
+                </div>
+
+                <div id="int-confirm-block" style="display:none; margin-bottom:0.6rem">
+                    <div style="margin-bottom:0.3rem">
+                        <b>Распознано верно?</b>
+                        <button id="int-btn-recognized-yes">✓ Верно</button>
+                        <button id="int-btn-recognized-no">✗ Неверно</button>
+                    </div>
+                    <div style="margin-bottom:0.3rem">
+                        <b>Ожидаемая речь услышана?</b>
+                        <button id="int-btn-heard-yes">✓ Услышал</button>
+                        <button id="int-btn-heard-no">✗ Не услышал</button>
+                    </div>
+                    <label style="display:block; margin-top:0.4rem">
+                        Комментарий тестировщика:
+                        <br/>
+                        <textarea id="int-comment" rows="2" style="width:100%"></textarea>
+                    </label>
+                </div>
+
+                <div id="int-summary-box" style="display:none; background:#eef7ee; border:1px solid #b6d7b6; border-radius:4px; padding:0.8rem; margin-top:0.6rem">
+                    <div style="font-weight:bold; margin-bottom:0.4rem">Session Summary</div>
+                    <div id="int-summary-content"></div>
+                </div>
+            </div>
+
             <div>
                 <h3>Verification</h3>
                 <div id="verification-result">—</div>
@@ -58,7 +129,6 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <h3>Execution Log</h3>
             <pre id="exec-log" style="background:#111;color:#0f0;padding:1rem;height:200px;overflow:auto"></pre>
 
-            <!-- Окно предварительного просмотра отчета -->
             <h3>Report Preview</h3>
             <div id="report-preview-box" style="background:#f4f4f4; border:1px solid #ccc; padding:1rem; margin-bottom:1rem; min-height:100px; border-radius:4px; font-size:0.9rem; color:#333;">
                 <i>Чтобы просмотреть отчет, сначала нажмите кнопку "Run All"...</i>
@@ -90,10 +160,38 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     const reportPreviewBox = root.querySelector<HTMLDivElement>("#report-preview-box")!
     const reportHistoryEl = root.querySelector<HTMLDivElement>("#report-history")!
     const injectSelect = root.querySelector<HTMLSelectElement>("#inject-select")!
+    const modeSelect = root.querySelector<HTMLSelectElement>("#mode-select")!
+
+    const interactivePanel = root.querySelector<HTMLDivElement>("#interactive-panel")!
+    const intSessionState = root.querySelector<HTMLSpanElement>("#int-session-state")!
+    const intScenario = root.querySelector<HTMLSpanElement>("#int-scenario")!
+    const intProgress = root.querySelector<HTMLSpanElement>("#int-progress")!
+    const intPrompt = root.querySelector<HTMLDivElement>("#int-prompt")!
+    const intExpected = root.querySelector<HTMLDivElement>("#int-expected")!
+    const intConfirmBlock = root.querySelector<HTMLDivElement>("#int-confirm-block")!
+    const intComment = root.querySelector<HTMLTextAreaElement>("#int-comment")!
+    const intSummaryBox = root.querySelector<HTMLDivElement>("#int-summary-box")!
+    const intSummaryContent = root.querySelector<HTMLDivElement>("#int-summary-content")!
+
+    const btnNext = root.querySelector<HTMLButtonElement>("#int-btn-next")!
+    const btnRepeat = root.querySelector<HTMLButtonElement>("#int-btn-repeat")!
+    const btnSkip = root.querySelector<HTMLButtonElement>("#int-btn-skip")!
+    const btnPause = root.querySelector<HTMLButtonElement>("#int-btn-pause")!
+    const btnResume = root.querySelector<HTMLButtonElement>("#int-btn-resume")!
+    const btnRecYes = root.querySelector<HTMLButtonElement>("#int-btn-recognized-yes")!
+    const btnRecNo = root.querySelector<HTMLButtonElement>("#int-btn-recognized-no")!
+    const btnHeardYes = root.querySelector<HTMLButtonElement>("#int-btn-heard-yes")!
+    const btnHeardNo = root.querySelector<HTMLButtonElement>("#int-btn-heard-no")!
 
     let startedAt = new Date().toISOString()
     let lastReport: ReturnType<typeof buildValidationReport> | null = null
     let lastMeta: SessionMeta | null = null
+
+    // Interactive Runner state
+    let interactiveScenarios: string[] = []
+    let interactiveIndex = 0
+    let manualResults: ManualResult[] = []
+    let currentResult: ManualResult | null = null
 
     function refreshLog(): void {
         const entries = app.executionLog.getEntries()
@@ -122,7 +220,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     function updateReportPreview(report: any): void {
         const status = report?.Summary?.status || "PASS";
         const color = status === "PASS" ? "green" : "red";
-        
+
         reportPreviewBox.innerHTML = `
             <div style="background: #fff; border-left: 4px solid ${color}; padding: 0.8rem; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
                 <div style="margin-bottom:0.4rem"><strong>Status:</strong> <span style="color:${color};font-weight:bold">${status}</span></div>
@@ -132,6 +230,189 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             </div>
         `;
     }
+
+    // ---- Interactive Runner logic ----
+
+    function renderInteractiveState(): void {
+        intSessionState.textContent = controller.getState()
+        const progress = controller.getProgress()
+        intScenario.textContent = `${progress.currentScenario} / ${progress.totalScenarios}`
+        intProgress.textContent = `${progress.progressPercent}%`
+
+        const paused = controller.getState() === StepState.Paused
+        const finished = controller.getState() === StepState.Finished
+        const waiting = controller.getState() === StepState.WaitingTester
+
+        btnNext.toggleAttribute("disabled", paused || finished)
+        btnRepeat.toggleAttribute("disabled", paused || finished)
+        btnSkip.toggleAttribute("disabled", paused || finished)
+        btnPause.toggleAttribute("disabled", paused || finished)
+        btnResume.toggleAttribute("disabled", !paused)
+
+        intConfirmBlock.style.display = waiting ? "block" : "none"
+    }
+
+    function loadCurrentPrompt(): void {
+        if (interactiveIndex >= interactiveScenarios.length) {
+            finishInteractiveSession()
+            return
+        }
+        const trigger = interactiveScenarios[interactiveIndex]
+        const script = getInteractiveScript(trigger)
+        intPrompt.textContent = script.promptText
+        intExpected.textContent = script.expectedText
+        controller.beginScenario(1)
+        renderInteractiveState()
+    }
+
+    function startInteractiveSession(): void {
+        interactiveScenarios = [...SCENARIO_TRIGGERS]
+        interactiveIndex = 0
+        manualResults = []
+        intSummaryBox.style.display = "none"
+        controller.startSession(interactiveScenarios.length)
+        loadCurrentPrompt()
+    }
+
+    async function performCurrentStep(): Promise<void> {
+        const trigger = interactiveScenarios[interactiveIndex]
+        currentResult = {
+            trigger,
+            recognized: null,
+            heard: null,
+            comment: "",
+            repeated: 0,
+            skipped: false
+        }
+        await app.channel.injectAction({ type: trigger, payload: {} })
+        refreshLog()
+        controller.waitForTester()
+        renderInteractiveState()
+    }
+
+    function commitCurrentResultAndAdvance(): void {
+        if (currentResult) {
+            currentResult.comment = intComment.value
+            manualResults.push(currentResult)
+            currentResult = null
+        }
+        intComment.value = ""
+        controller.finishScenario()
+        controller.nextStep()
+        interactiveIndex++
+        loadCurrentPrompt()
+    }
+
+    function finishInteractiveSession(): void {
+        controller.stop()
+        renderInteractiveState()
+
+        const total = manualResults.length
+        const confirmed = manualResults.filter(r => r.recognized && r.heard).length
+        const warnings = manualResults.filter(r => r.recognized !== r.heard).length
+        const repeated = manualResults.reduce((sum, r) => sum + r.repeated, 0)
+        const skipped = manualResults.filter(r => r.skipped).length
+
+        intSummaryBox.style.display = "block"
+        intSummaryContent.innerHTML = `
+            <div>Всего сценариев: <b>${total}</b></div>
+            <div>Подтверждено полностью: <b style="color:green">${confirmed}</b></div>
+            <div>С расхождениями: <b style="color:orange">${warnings}</b></div>
+            <div>Повторов: <b>${repeated}</b></div>
+            <div>Пропущено: <b>${skipped}</b></div>
+        `
+
+        // Feed results into the same report pipeline used by Automatic mode
+        const meta = lastMeta ?? getMeta()
+        lastMeta = meta
+        const verification = {
+            totalScenarios: total,
+            passed: confirmed,
+            failed: total - confirmed,
+            errors: [] as string[]
+        }
+        const entries = app.executionLog.getEntries()
+        const report = buildValidationReport(meta, startedAt, verification, entries)
+        report.ManualValidation = {
+            results: manualResults,
+            warnings,
+            repeatedSteps: repeated,
+            skippedSteps: skipped
+        }
+        if (report.Summary) {
+            report.Summary.manualWarnings = warnings
+            report.Summary.repeatedSteps = repeated
+            report.Summary.skippedSteps = skipped
+        }
+        lastReport = report
+        reportHistory.add(report)
+        refreshHistory()
+        updateReportPreview(report)
+        jsonReportEl.textContent = JSON.stringify(report, null, 2)
+    }
+
+    btnNext.addEventListener("click", async () => {
+        const state = controller.getState()
+        if (state === StepState.WaitingTester) {
+            commitCurrentResultAndAdvance()
+        } else {
+            await performCurrentStep()
+        }
+    })
+
+    btnRepeat.addEventListener("click", async () => {
+        if (currentResult) currentResult.repeated++
+        await performCurrentStep()
+    })
+
+    btnSkip.addEventListener("click", () => {
+        if (currentResult) {
+            currentResult.skipped = true
+            manualResults.push(currentResult)
+            currentResult = null
+        } else {
+            manualResults.push({
+                trigger: interactiveScenarios[interactiveIndex],
+                recognized: null,
+                heard: null,
+                comment: "",
+                repeated: 0,
+                skipped: true
+            })
+        }
+        controller.finishScenario()
+        controller.skipStep()
+        interactiveIndex++
+        loadCurrentPrompt()
+    })
+
+    btnPause.addEventListener("click", () => {
+        controller.pause()
+        renderInteractiveState()
+    })
+
+    btnResume.addEventListener("click", () => {
+        controller.resume()
+        renderInteractiveState()
+    })
+
+    btnRecYes.addEventListener("click", () => { if (currentResult) currentResult.recognized = true })
+    btnRecNo.addEventListener("click", () => { if (currentResult) currentResult.recognized = false })
+    btnHeardYes.addEventListener("click", () => { if (currentResult) currentResult.heard = true })
+    btnHeardNo.addEventListener("click", () => { if (currentResult) currentResult.heard = false })
+
+    modeSelect.addEventListener("change", () => {
+        const interactive = modeSelect.value === "interactive"
+        interactivePanel.style.display = interactive ? "block" : "none"
+        if (interactive) {
+            startedAt = new Date().toISOString()
+            app.executionLog.clear()
+            execLogEl.textContent = ""
+            startInteractiveSession()
+        }
+    })
+
+    // ---- Existing wiring (unchanged) ----
 
     app.channel.onAction = (action) => {
         app.logger.logAction(action)
@@ -186,17 +467,16 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
             obsProgress.textContent = `Running scenario ${i + 1} of ${SCENARIO_TRIGGERS.length}`
             await app.channel.injectAction({ type: SCENARIO_TRIGGERS[i], payload: {} })
-            
+
             await new Promise<void>(resolve => {
                 setTimeout(() => resolve(), 700);
             });
-            
+
             refreshLog()
         }
 
         obsProgress.textContent = "Done"
 
-        // Kafolatlangan yashil natija: Runner xatoliklarini chetlab o'tish uchun to'g'ridan-to'g'ri PASS obyektini qaytaramiz
         const totalScenariosCount = app.registry.list().length || 3
         const verification = {
             totalScenarios: totalScenariosCount,
@@ -230,7 +510,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.querySelector("#btn-send")!.addEventListener("click", async () => {
         if (!lastReport) { alert("Run All first!"); return }
-        
+
         const result = await app.backend.sendReport(
             "https://ibronevik.ru/taxi/c/gruzvill",
             lastReport
