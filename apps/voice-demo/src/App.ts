@@ -12,7 +12,7 @@ import { buildValidationReport, generateReportFilename } from "./ValidationRepor
 import { ReportHistory, type ReportHistoryEntry } from "./ReportHistory"
 import { SessionController } from "./SessionController"
 import { StepState } from "./StepState"
-import { getInteractiveScript } from "./InteractiveScriptMap"
+import { getInteractiveScript, getStepLabel } from "./InteractiveScriptMap"
 
 const SCENARIO_TRIGGERS = ["voice.recognized", "interaction.echo", "interaction.delayed"]
 
@@ -83,7 +83,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
                 </div>
 
                 <div style="background:#fff; border:1px solid #ddd; border-radius:4px; padding:0.8rem; margin-bottom:0.6rem">
-                    <div style="font-weight:bold; margin-bottom:0.3rem">Шаг</div>
+                    <div id="int-step-label" style="font-weight:bold; margin-bottom:0.3rem">Step</div>
                     <div id="int-prompt" style="font-size:1.05rem; margin-bottom:0.4rem">—</div>
                     <div id="int-expected" style="color:#555; font-size:0.9rem">—</div>
                 </div>
@@ -167,6 +167,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     const intProgress = root.querySelector<HTMLSpanElement>("#int-progress")!
     const intPrompt = root.querySelector<HTMLDivElement>("#int-prompt")!
     const intExpected = root.querySelector<HTMLDivElement>("#int-expected")!
+    const intStepLabel = root.querySelector<HTMLDivElement>("#int-step-label")!
     const intConfirmBlock = root.querySelector<HTMLDivElement>("#int-confirm-block")!
     const intComment = root.querySelector<HTMLTextAreaElement>("#int-comment")!
     const intSummaryBox = root.querySelector<HTMLDivElement>("#int-summary-box")!
@@ -258,7 +259,9 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             return
         }
         const trigger = interactiveScenarios[interactiveIndex]
-        const script = getInteractiveScript(trigger, getMeta().language)
+        const language = getMeta().language
+        const script = getInteractiveScript(trigger, language)
+        intStepLabel.textContent = getStepLabel(language)
         intPrompt.textContent = script.promptText
         intExpected.textContent = script.expectedText
         controller.beginScenario(1)

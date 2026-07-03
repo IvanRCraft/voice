@@ -70,3 +70,13 @@ export function getInteractiveScript(trigger: string, language: string): Interac
         expectedText: "No expected response defined"
     }
 }
+
+const STEP_LABEL_BY_LANGUAGE: Record<string, string> = {
+    "ru-RU": "Шаг",
+    "en-US": "Step",
+    "fr-FR": "Étape"
+}
+
+export function getStepLabel(language: string): string {
+    return STEP_LABEL_BY_LANGUAGE[language] ?? STEP_LABEL_BY_LANGUAGE["en-US"]
+}
