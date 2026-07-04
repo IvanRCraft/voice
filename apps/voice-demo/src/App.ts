@@ -359,15 +359,6 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     /**
      * PR-9d.2: starts the real microphone channel and waits for the
      * next real recognition result to arrive via app.channel.onAction.
-     *
-     * IMPORTANT: BrowserRecognitionProvider's underlying Web Speech API
-     * session ends after producing one result (it is not continuous).
-     * VoiceChannel.start() is idempotent and does nothing if the channel
-     * is already "running", so simply calling start() again would NOT
-     * actually restart listening for a second/third attempt. We must
-     * explicitly stop() first, then start() again, so the browser
-     * actually begins listening for a fresh utterance every time this
-     * function runs (first step, Next Step, and every Repeat Step).
      */
     async function startMicListening(): Promise<void> {
         micStatus.textContent = "🎤 Listening — say the phrase now…"
@@ -570,7 +561,14 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             meta.password
         )
         connLabel.textContent = session.status === "connected" ? "● Connected" : "✗ " + session.status
-        mailLabel.textContent = session.status === "connected" ? "Ready" : "—"
+
+        if (session.status === "connected") {
+            mailLabel.textContent = "Checking…"
+            const emailId = await app.backend.getEmailId("https://ibronevik.ru/taxi/c/gruzvill")
+            mailLabel.textContent = emailId ? "● Ready" : "✗ No email configured"
+        } else {
+            mailLabel.textContent = "—"
+        }
     })
 
     root.querySelector("#btn-start")!.addEventListener("click", async () => {
@@ -646,7 +644,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         const baseUrl = "https://ibronevik.ru/taxi/c/gruzvill"
         const emailId = await app.backend.getEmailId(baseUrl)
         if (!emailId) {
-            alert("❌ Send failed: no email id available")
+            alert("❌ Send failed: no email id available. Please check that a site email is configured in the backend.")
             return
         }
         const result = await app.backend.sendReport(
