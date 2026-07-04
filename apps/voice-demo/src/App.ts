@@ -371,6 +371,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
      */
     async function startMicListening(): Promise<void> {
         micStatus.textContent = "🎤 Listening — say the phrase now…"
+        app.recognition.setLanguage(getMeta().language)
         await app.channel.stop()
         await app.channel.start()
         obsState.textContent = app.channel.getState()
@@ -448,7 +449,6 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <div>Пропущено: <b>${skipped}</b></div>
         `
 
-        // Feed results into the same report pipeline used by Automatic mode
         const meta = lastMeta ?? getMeta()
         lastMeta = meta
         const verification = {

@@ -2,22 +2,22 @@
  * Voice Contracts — Browser Implementation
  *
  * Implements RecognitionProvider using Browser Web Speech API.
- *
- * Does NOT know about:
- *  - Taxi
- *  - Driver
- *  - FSM
- *  - Interaction Contract
- *  - commands
- *  - events
  */
 export class BrowserRecognitionProvider {
     recognition;
+    language;
     listeners = new Set();
+    onError = null;
+    onEnd = null;
     constructor(language = "ru-RU") {
+        this.language = language;
         this.recognition = this.createRecognition();
-        this.configureRecognition(language);
+        this.configureRecognition(this.language);
         this.bindEvents();
+    }
+    setLanguage(language) {
+        this.language = language;
+        this.recognition.lang = language;
     }
     async start() {
         this.recognition.start();
@@ -49,10 +49,11 @@ export class BrowserRecognitionProvider {
         this.recognition.onresult = (event) => {
             this.handleResult(event);
         };
-        this.recognition.onerror = () => {
-            // Intentionally left empty: this provider does not decide
-            // how errors should be surfaced to the application. A
-            // dedicated error channel can be added to the contract later.
+        this.recognition.onerror = (event) => {
+            this.onError?.(event.error ?? "unknown-error");
+        };
+        this.recognition.onend = () => {
+            this.onEnd?.();
         };
     }
     handleResult(event) {
