@@ -14,6 +14,13 @@
  *
  * If no scenario matches the action, a generic fallback event is
  * produced (mirrors the previous EmulatorScenario default).
+ *
+ * PR-9d.2: if the incoming action carries recognized text
+ * (action.payload.text, as produced by a real RecognitionProvider),
+ * that text is automatically attached as `recognizedText` on every
+ * emitted event's payload. This lets simple default scenarios (like
+ * voice-recognized-ok) speak back what the user actually said,
+ * without needing full intent/template resolution (PR-7/PR-8).
  */
 import { RealTimeDelayProvider } from "./DelayProvider";
 export class ScenarioEngine {
@@ -32,10 +39,11 @@ export class ScenarioEngine {
             };
             return;
         }
+        const recognizedText = this.extractRecognizedText(action);
         for (const step of scenario.steps) {
             switch (step.kind) {
                 case "emit":
-                    yield step.event;
+                    yield this.withRecognizedText(step.event, recognizedText);
                     break;
                 case "delay":
                     await this.delayProvider.wait(step.ms);
@@ -44,6 +52,22 @@ export class ScenarioEngine {
                     return;
             }
         }
+    }
+    extractRecognizedText(action) {
+        const payload = action.payload;
+        return payload && typeof payload.text === "string" ? payload.text : undefined;
+    }
+    withRecognizedText(event, recognizedText) {
+        if (!recognizedText) {
+            return event;
+        }
+        return {
+            ...event,
+            payload: {
+                ...(event.payload ?? {}),
+                recognizedText
+            }
+        };
     }
 }
 //# sourceMappingURL=ScenarioEngine.js.map
