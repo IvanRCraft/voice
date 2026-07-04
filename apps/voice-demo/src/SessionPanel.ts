@@ -101,15 +101,15 @@ export function renderSessionPanel(root: HTMLElement): () => SessionMeta {
                 </div>
                 <div class="session-field">
                     <label for="s-backend-url">Backend URL</label>
-                    <input id="s-backend-url" value="" />
+                    <input id="s-backend-url" value="https://voice-assistant-two-olive.vercel.app" />
                 </div>
                 <div class="session-field">
                     <label for="s-login">Login</label>
-                    <input id="s-login" value="" />
+                    <input id="s-login" value="testvoiceee@gmail.com" />
                 </div>
                 <div class="session-field">
                     <label for="s-password">Password</label>
-                    <input id="s-password" type="password" value="" />
+                    <input id="s-password" type="password" value="tyler8787" />
                 </div>
             </div>
         </div>
@@ -130,4 +130,3 @@ export function renderSessionPanel(root: HTMLElement): () => SessionMeta {
     })
 
 }
-
