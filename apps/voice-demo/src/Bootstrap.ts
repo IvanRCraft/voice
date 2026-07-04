@@ -26,6 +26,7 @@ export interface BenchApp {
     readonly registry: ScenarioRegistry
     readonly backend: BackendClient
     readonly interaction: InteractionContract
+    readonly recognition: BrowserRecognitionProvider
 }
 export function bootstrap(language = "en-US"): BenchApp {
     const registry = new ScenarioRegistry()
@@ -48,5 +49,5 @@ export function bootstrap(language = "en-US"): BenchApp {
         speechMapper: new DefaultSpeechMapper()
     })
     const backend = new BackendClient()
-    return { channel, logger, executionLog, memorySink, registry, backend, interaction }
+    return { channel, logger, executionLog, memorySink, registry, backend, interaction, recognition }
 }

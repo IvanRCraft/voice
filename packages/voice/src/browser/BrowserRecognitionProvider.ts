@@ -2,14 +2,6 @@
  * Voice Contracts — Browser Implementation
  *
  * Implements RecognitionProvider using Browser Web Speech API.
- *
- * Does NOT know about:
- *  - Taxi
- *  - Driver
- *  - FSM
- *  - Interaction Contract
- *  - commands
- *  - events
  */
 
 import type {
@@ -22,22 +14,31 @@ import type { RecognitionResult } from "../types/RecognitionResult"
 import type {
     SpeechRecognition,
     SpeechRecognitionConstructor,
-    SpeechRecognitionEvent
+    SpeechRecognitionEvent,
+    SpeechRecognitionErrorEvent
 } from "./browser-types"
 
 export class BrowserRecognitionProvider implements RecognitionProvider {
 
-    private readonly recognition: SpeechRecognition
+    private recognition: SpeechRecognition
+    private language: string
 
     private readonly listeners =
         new Set<(result: RecognitionResult) => void>()
 
+    public onError: ((message: string) => void) | null = null
+    public onEnd: (() => void) | null = null
+
     constructor(language = "ru-RU") {
-
+        this.language = language
         this.recognition = this.createRecognition()
-        this.configureRecognition(language)
+        this.configureRecognition(this.language)
         this.bindEvents()
+    }
 
+    setLanguage(language: string): void {
+        this.language = language
+        this.recognition.lang = language
     }
 
     async start(): Promise<void> {
@@ -51,17 +52,13 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
     subscribe(
         listener: (result: RecognitionResult) => void
     ): Unsubscribe {
-
         this.listeners.add(listener)
-
         return () => {
             this.listeners.delete(listener)
         }
-
     }
 
     private createRecognition(): SpeechRecognition {
-
         const Ctor: SpeechRecognitionConstructor | undefined =
             window.SpeechRecognition ??
             window.webkitSpeechRecognition
@@ -73,7 +70,6 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
         }
 
         return new Ctor()
-
     }
 
     private configureRecognition(language: string): void {
@@ -84,21 +80,20 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
     }
 
     private bindEvents(): void {
-
         this.recognition.onresult = (event: SpeechRecognitionEvent) => {
             this.handleResult(event)
         }
 
-        this.recognition.onerror = () => {
-            // Intentionally left empty: this provider does not decide
-            // how errors should be surfaced to the application. A
-            // dedicated error channel can be added to the contract later.
+        this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+            this.onError?.(event.error ?? "unknown-error")
         }
 
+        this.recognition.onend = () => {
+            this.onEnd?.()
+        }
     }
 
     private handleResult(event: SpeechRecognitionEvent): void {
-
         const resultItem = event.results.item(event.resultIndex)
 
         if (!resultItem || resultItem.length === 0) {
@@ -120,7 +115,6 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
         for (const listener of this.listeners) {
             listener(result)
         }
-
     }
 
 }

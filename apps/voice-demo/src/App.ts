@@ -357,12 +357,21 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     }
 
     /**
-     * PR-9d.2: starts the real microphone channel (idempotent — 
-     * VoiceChannel.start() no-ops if already running) and waits for
-     * the next real recognition result to arrive via app.channel.onAction.
+     * PR-9d.2: starts the real microphone channel and waits for the
+     * next real recognition result to arrive via app.channel.onAction.
+     *
+     * IMPORTANT: BrowserRecognitionProvider's underlying Web Speech API
+     * session ends after producing one result (it is not continuous).
+     * VoiceChannel.start() is idempotent and does nothing if the channel
+     * is already "running", so simply calling start() again would NOT
+     * actually restart listening for a second/third attempt. We must
+     * explicitly stop() first, then start() again, so the browser
+     * actually begins listening for a fresh utterance every time this
+     * function runs (first step, Next Step, and every Repeat Step).
      */
     async function startMicListening(): Promise<void> {
         micStatus.textContent = "🎤 Listening — say the phrase now…"
+        await app.channel.stop()
         await app.channel.start()
         obsState.textContent = app.channel.getState()
 
