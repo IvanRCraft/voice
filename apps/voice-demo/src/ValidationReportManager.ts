@@ -14,19 +14,22 @@ export function buildValidationReport(
   meta: any,
   startedAt: string,
   verification: any,
-  executionLog: any
+  executionLog: any,
+  validationMode: string = "Automatic",
+  inputSource: string = "Built-in Scenarios"
 ) {
   // Statusni avtomatik hisoblash
   let status: 'PASS' | 'PASS WITH WARNINGS' | 'FAIL' = 'PASS';
   if (verification.failed > 0) {
     status = 'FAIL';
   }
-
   return {
     Session: {
       tester: meta.tester || "Tester-1",
       language: meta.language || "en-US",
-      startedAt: startedAt
+      startedAt: startedAt,
+      validationMode: validationMode,
+      inputSource: inputSource
     },
     Environment: {
       env: meta.environment || "demo",

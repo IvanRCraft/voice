@@ -449,7 +449,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             errors: [] as string[]
         }
         const entries = app.executionLog.getEntries()
-        const report = buildValidationReport(meta, startedAt, verification, entries)
+        const inputSourceLabel = inputSourceSelect.value === "mic" ? "Browser microphone" : "Inject Action"
+        const report = buildValidationReport(meta, startedAt, verification, entries, "Interactive", inputSourceLabel)
         report.ManualValidation = {
             results: manualResults,
             warnings,
@@ -618,7 +619,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         verificationResult.innerHTML = `<span style="color:green;font-weight:bold">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
 
         const entries = app.executionLog.getEntries()
-        const report = buildValidationReport(meta, startedAt, verification, entries)
+        const report = buildValidationReport(meta, startedAt, verification, entries, "Automatic", "Built-in Scenarios")
         lastReport = report
         reportHistory.add(report)
         refreshHistory()
