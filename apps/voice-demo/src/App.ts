@@ -376,6 +376,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         micStatus.textContent = "🎤 Listening — say the phrase now…"
         app.recognition.setLanguage(getMeta().language)
         await app.channel.stop()
+        app.recognition.setLanguage(getMeta().language)
         await app.channel.start()
         obsState.textContent = app.channel.getState()
 
@@ -588,6 +589,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         startedAt = new Date().toISOString()
         app.executionLog.clear()
         execLogEl.textContent = ""
+        app.recognition.setLanguage(getMeta().language)
         await app.channel.start()
         obsState.textContent = app.channel.getState()
     })
@@ -612,7 +614,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             await app.channel.injectAction({ type: SCENARIO_TRIGGERS[i], payload: {} })
 
             await new Promise<void>(resolve => {
-                setTimeout(() => resolve(), 700);
+                setTimeout(() => resolve(), 1500);
             });
 
             refreshLog()
