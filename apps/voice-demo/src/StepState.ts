@@ -1,10 +1,7 @@
 export enum StepState {
     Idle = "idle",
-    WaitingSpeech = "waiting-speech",
-    Recognizing = "recognizing",
-    Speaking = "speaking",
-    WaitingConfirmation = "waiting-confirmation",
-    ReadyForNext = "ready-for-next",
+    WaitingTester = "waiting-tester",
+    Running = "running",
     Paused = "paused",
     Finished = "finished"
 }

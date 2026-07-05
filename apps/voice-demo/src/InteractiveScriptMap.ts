@@ -2,86 +2,58 @@
  * Validation Bench — Interactive Mode
  *
  * Human-readable script text shown to the tester for each scenario
- * trigger, localized by session language. Lives only in voice-demo,
- * does not touch Platform Core.
- *
- * NOTE: placeholder phrases — replace with real client-approved
- * phrases per language when available.
+ * trigger, localized per session language.
  */
 
 export interface InteractiveScript {
-    /** Label shown before the phrase, e.g. "Скажите:" / "Say:" */
-    readonly promptLabel: string
-    /** The phrase the tester should say. */
-    readonly spokenPhrase: string
-    /** Label shown before the assistant's response, e.g. "Ассистент ответил:" */
-    readonly responseLabel: string
-    /** The human-readable response text (for echo, equals spokenPhrase). */
-    readonly responseText: string
+    readonly promptText: string
+    readonly expectedText: string
 }
 
 type ScriptsByTrigger = Record<string, InteractiveScript>
 
 const SCRIPTS_RU: ScriptsByTrigger = {
     "voice.recognized": {
-        promptLabel: "Скажите:",
-        spokenPhrase: "Тестовая фраза 1",
-        responseLabel: "Ассистент ответил:",
-        responseText: "Речь распознана верно"
+        promptText: "Скажите: \"Тестовая фраза 1\"",
+        expectedText: "Ожидаемый ответ: подтверждение распознавания"
     },
     "interaction.echo": {
-        promptLabel: "Скажите:",
-        spokenPhrase: "Тестовая фраза 2",
-        responseLabel: "Ассистент повторил:",
-        responseText: "Тестовая фраза 2"
+        promptText: "Скажите: \"Тестовая фраза 2\"",
+        expectedText: "Ожидаемый ответ: эхо-повтор фразы"
     },
     "interaction.delayed": {
-        promptLabel: "Скажите:",
-        spokenPhrase: "Тестовая фраза 3",
-        responseLabel: "Ассистент ответил (с задержкой):",
-        responseText: "Ответ получен с задержкой"
+        promptText: "Скажите: \"Тестовая фраза 3\"",
+        expectedText: "Ожидаемый ответ: ответ с задержкой"
     }
 }
 
 const SCRIPTS_EN: ScriptsByTrigger = {
     "voice.recognized": {
-        promptLabel: "Say:",
-        spokenPhrase: "Test phrase 1",
-        responseLabel: "Assistant replied:",
-        responseText: "Speech recognized correctly"
+        promptText: "Say: \"Test phrase 1\"",
+        expectedText: "Expected response: recognition confirmed"
     },
     "interaction.echo": {
-        promptLabel: "Say:",
-        spokenPhrase: "Test phrase 2",
-        responseLabel: "Assistant repeated:",
-        responseText: "Test phrase 2"
+        promptText: "Say: \"Test phrase 2\"",
+        expectedText: "Expected response: echo of the phrase"
     },
     "interaction.delayed": {
-        promptLabel: "Say:",
-        spokenPhrase: "Test phrase 3",
-        responseLabel: "Assistant replied (delayed):",
-        responseText: "Delayed response received"
+        promptText: "Say: \"Test phrase 3\"",
+        expectedText: "Expected response: delayed reply"
     }
 }
 
 const SCRIPTS_FR: ScriptsByTrigger = {
     "voice.recognized": {
-        promptLabel: "Dites :",
-        spokenPhrase: "Phrase de test 1",
-        responseLabel: "L'assistant a répondu :",
-        responseText: "Parole reconnue correctement"
+        promptText: "Dites : « Phrase de test 1 »",
+        expectedText: "Réponse attendue : reconnaissance confirmée"
     },
     "interaction.echo": {
-        promptLabel: "Dites :",
-        spokenPhrase: "Phrase de test 2",
-        responseLabel: "L'assistant a répété :",
-        responseText: "Phrase de test 2"
+        promptText: "Dites : « Phrase de test 2 »",
+        expectedText: "Réponse attendue : écho de la phrase"
     },
     "interaction.delayed": {
-        promptLabel: "Dites :",
-        spokenPhrase: "Phrase de test 3",
-        responseLabel: "L'assistant a répondu (avec délai) :",
-        responseText: "Réponse différée reçue"
+        promptText: "Dites : « Phrase de test 3 »",
+        expectedText: "Réponse attendue : réponse différée"
     }
 }
 
@@ -94,9 +66,17 @@ const SCRIPTS_BY_LANGUAGE: Record<string, ScriptsByTrigger> = {
 export function getInteractiveScript(trigger: string, language: string): InteractiveScript {
     const scripts = SCRIPTS_BY_LANGUAGE[language] ?? SCRIPTS_EN
     return scripts[trigger] ?? {
-        promptLabel: "Action:",
-        spokenPhrase: trigger,
-        responseLabel: "Response:",
-        responseText: "No script defined for this language"
+        promptText: `Perform action: ${trigger}`,
+        expectedText: "No expected response defined"
     }
+}
+
+const STEP_LABEL_BY_LANGUAGE: Record<string, string> = {
+    "ru-RU": "Шаг",
+    "en-US": "Step",
+    "fr-FR": "Étape"
+}
+
+export function getStepLabel(language: string): string {
+    return STEP_LABEL_BY_LANGUAGE[language] ?? STEP_LABEL_BY_LANGUAGE["en-US"]
 }
