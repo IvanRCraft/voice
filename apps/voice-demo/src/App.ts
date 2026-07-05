@@ -453,7 +453,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <div>Пропущено: <b>${skipped}</b></div>
         `
 
-        const meta = lastMeta ?? getMeta()
+        const meta = getMeta()
         lastMeta = meta
         const verification = {
             totalScenarios: total,
@@ -606,7 +606,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     })
 
     root.querySelector("#btn-run-all")!.addEventListener("click", async () => {
-        const meta = lastMeta ?? getMeta()
+        const meta = getMeta()
         lastMeta = meta
 
         for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
@@ -643,7 +643,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     root.querySelector("#btn-download")!.addEventListener("click", () => {
         if (!lastReport) { alert("Run All first!"); return }
-        const meta = lastMeta ?? getMeta()
+        const meta = getMeta()
         const blob = new Blob([JSON.stringify(lastReport, null, 2)], { type: "application/json" })
         const url = URL.createObjectURL(blob)
         const a = document.createElement("a")
@@ -671,3 +671,4 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     })
 
 }
+
