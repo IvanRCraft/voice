@@ -4,6 +4,7 @@ import type { ProgressModel } from "./ProgressModel"
 export class SessionController {
 
     private state = StepState.Idle
+    private previousState: StepState | null = null
 
     private progress: ProgressModel = {
         currentScenario: 0,
@@ -21,53 +22,66 @@ export class SessionController {
         return this.progress
     }
 
+    /** Called once when the interactive session begins. */
     startSession(totalScenarios: number): void {
-        this.state = StepState.Running
+        this.state = StepState.Idle
         this.progress = {
             currentScenario: 1,
             totalScenarios,
             currentStep: 0,
-            totalSteps: 0,
+            totalSteps: totalScenarios,
             progressPercent: 0
         }
     }
 
-    beginScenario(totalSteps: number): void {
-        this.progress.totalSteps = totalSteps
-        this.progress.currentStep = 0
-        this.progress.progressPercent = 0
+    /** Tester clicks "Начать шаг" — begin waiting for the tester's speech. */
+    beginWaitingSpeech(): void {
+        this.state = StepState.WaitingSpeech
     }
 
-    nextStep(): void {
-        if (this.progress.currentStep < this.progress.totalSteps) {
-            this.progress.currentStep++
-        }
+    /** Simulated recognition phase. */
+    beginRecognizing(): void {
+        this.state = StepState.Recognizing
+    }
+
+    /** Scenario engine is producing its response. */
+    beginSpeaking(): void {
+        this.state = StepState.Speaking
+    }
+
+    /** Response delivered — tester must now confirm recognized/heard. */
+    beginConfirmation(): void {
+        this.state = StepState.WaitingConfirmation
+    }
+
+    /** Both recognized+heard confirmations were provided. */
+    markReadyForNext(): void {
+        this.state = StepState.ReadyForNext
+    }
+
+    /** Advances to the next scenario and resets to Idle for the next step. */
+    advanceToNextScenario(): void {
+        this.progress.currentScenario++
+        this.progress.currentStep++
         this.updateProgress()
-        this.state = StepState.Running
-    }
-
-    repeatStep(): void {
-        this.state = StepState.WaitingTester
-    }
-
-    skipStep(): void {
-        this.nextStep()
+        this.state = StepState.Idle
     }
 
     pause(): void {
+        if (
+            this.state === StepState.WaitingConfirmation ||
+            this.state === StepState.ReadyForNext ||
+            this.state === StepState.Finished ||
+            this.state === StepState.Paused
+        ) return
+        this.previousState = this.state
         this.state = StepState.Paused
     }
 
     resume(): void {
-        this.state = StepState.Running
-    }
-
-    waitForTester(): void {
-        this.state = StepState.WaitingTester
-    }
-
-    finishScenario(): void {
-        this.progress.currentScenario++
+        if (this.state !== StepState.Paused) return
+        this.state = this.previousState ?? StepState.Idle
+        this.previousState = null
     }
 
     stop(): void {
