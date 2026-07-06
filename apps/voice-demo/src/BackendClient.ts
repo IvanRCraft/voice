@@ -55,15 +55,25 @@ export class BackendClient {
         }
     }
 
+    /**
+     * PR-9d.2 fix: the backend wraps the requested data in an extra
+     * "data" layer, e.g.:
+     *   { code, status, data: { version, ..., data: { site_emails: {...} } } }
+     * The previous implementation only unwrapped one level
+     * (response.data.site_emails), which is always undefined because
+     * the real path is response.data.data.site_emails. This caused
+     * "No email configured" even when the backend had emails set up.
+     */
     async getEmailId(baseUrl: string): Promise<string | null> {
         try {
             const query = encodeURIComponent(JSON.stringify({ site_emails: true }))
             const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`)
             if (!res.ok) return null
-            const data = await res.json() as { data?: { data?: { site_emails?: Record<string, unknown> } } }
+            const data = await res.json() as {
+                data?: { data?: { site_emails?: Record<string, unknown> } }
+            }
             const siteEmails = data.data?.data?.site_emails
             if (!siteEmails) return null
-            if (siteEmails["2"]) return "2"
             const keys = Object.keys(siteEmails)
             return keys.length > 0 ? keys[0] : null
         } catch {
@@ -84,13 +94,9 @@ export class BackendClient {
             reader.onerror = () => reject(reader.error)
             reader.readAsDataURL(blob)
         })
-        // dataUrl looks like "data:application/json;charset=UTF-8;base64,XXXX".
-        // The backend expects only the raw base64 payload after the comma,
-        // otherwise it stores/sends an empty (0 byte) attachment.
-        const base64Payload = dataUrl.substring(dataUrl.indexOf(",") + 1)
         const file = JSON.stringify([
             {
-                base64: base64Payload,
+                base64: dataUrl,
                 name: "validation-report.json"
             }
         ])
