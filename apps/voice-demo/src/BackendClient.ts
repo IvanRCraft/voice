@@ -19,7 +19,7 @@ export class BackendClient {
             authParams.set("login", login)
             authParams.set("password", password)
             authParams.set("type", "e-mail")
-            const authRes = await fetch(`${baseUrl}/api/v1/auth`, {
+            const authRes = await fetch(baseUrl + "/api/v1/auth", {
                 method: "POST",
                 body: authParams
             })
@@ -34,7 +34,7 @@ export class BackendClient {
             }
             const tokenParams = new URLSearchParams()
             tokenParams.set("auth_hash", authData.auth_hash)
-            const tokenRes = await fetch(`${baseUrl}/api/v1/token`, {
+            const tokenRes = await fetch(baseUrl + "/api/v1/token", {
                 method: "POST",
                 body: tokenParams
             })
@@ -55,19 +55,10 @@ export class BackendClient {
         }
     }
 
-    /**
-     * PR-9d.2 fix: the backend wraps the requested data in an extra
-     * "data" layer, e.g.:
-     *   { code, status, data: { version, ..., data: { site_emails: {...} } } }
-     * The previous implementation only unwrapped one level
-     * (response.data.site_emails), which is always undefined because
-     * the real path is response.data.data.site_emails. This caused
-     * "No email configured" even when the backend had emails set up.
-     */
     async getEmailId(baseUrl: string): Promise<string | null> {
         try {
             const query = encodeURIComponent(JSON.stringify({ site_emails: true }))
-            const res = await fetch(`${baseUrl}/api/v1/data/?json_like=${query}`)
+            const res = await fetch(baseUrl + "/api/v1/data/?json_like=" + query)
             if (!res.ok) return null
             const data = await res.json() as {
                 data?: { data?: { site_emails?: Record<string, unknown> } }
@@ -85,7 +76,6 @@ export class BackendClient {
         if (!this.session || this.session.status !== "connected") {
             return false
         }
-
         const json = JSON.stringify(report)
         const blob = new Blob([json], { type: "application/json;charset=UTF-8" })
         const dataUrl: string = await new Promise((resolve, reject) => {
@@ -94,13 +84,7 @@ export class BackendClient {
             reader.onerror = () => reject(reader.error)
             reader.readAsDataURL(blob)
         })
-        const file = JSON.stringify([
-            {
-                base64: dataUrl,
-                name: "validation-report.json"
-            }
-        ])
-
+        const file = JSON.stringify([{ base64: dataUrl, name: "validation-report.json" }])
         try {
             const params = new URLSearchParams()
             params.set("token", this.session.token)
@@ -108,7 +92,7 @@ export class BackendClient {
             params.set("subject", "Validation Report")
             params.set("body", "See attached JSON report.")
             params.set("file", file)
-            const res = await fetch(`${baseUrl}/api/v1/mail/${emailId}/send/`, {
+            const res = await fetch(baseUrl + "/api/v1/mail/" + emailId + "/send/", {
                 method: "POST",
                 body: params
             })
