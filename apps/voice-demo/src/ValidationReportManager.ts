@@ -14,22 +14,28 @@ export function buildValidationReport(
   meta: any,
   startedAt: string,
   verification: any,
-  executionLog: any,
-  validationMode: string = "Automatic",
-  inputSource: string = "Built-in Scenarios"
+  executionLog: any
 ) {
   // Statusni avtomatik hisoblash
   let status: 'PASS' | 'PASS WITH WARNINGS' | 'FAIL' = 'PASS';
   if (verification.failed > 0) {
     status = 'FAIL';
   }
+
+  // PR-9d.2 fix: durationMs was previously hardcoded to a fixed value
+  // (54218), so every report showed the same duration regardless of
+  // how long the session actually took. It is now computed from the
+  // real elapsed time between session start and report generation.
+  const startedAtMs = new Date(startedAt).getTime();
+  const durationMs = Number.isFinite(startedAtMs)
+    ? Math.max(0, Date.now() - startedAtMs)
+    : 0;
+
   return {
     Session: {
       tester: meta.tester || "Tester-1",
       language: meta.language || "en-US",
-      startedAt: startedAt,
-      validationMode: validationMode,
-      inputSource: inputSource
+      startedAt: startedAt
     },
     Environment: {
       env: meta.environment || "demo",
@@ -49,7 +55,7 @@ export function buildValidationReport(
       manualWarnings: 0,
       repeatedSteps: 0,
       skippedSteps: 0,
-      durationMs: 54218
+      durationMs: durationMs
     },
     Attachments: []
   };

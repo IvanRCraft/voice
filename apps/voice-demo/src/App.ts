@@ -463,8 +463,13 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             <div>Пропущено: <b>${skipped}</b></div>
         `
 
-        // Feed results into the same report pipeline used by Automatic mode
-        const meta = lastMeta ?? getMeta()
+        // Feed results into the same report pipeline used by Automatic mode.
+        // PR-9d.2 fix: always read the CURRENT session settings here
+        // instead of falling back to a stale lastMeta captured at an
+        // earlier Connect/Run All click — otherwise the report keeps
+        // showing whatever language/tester was selected back then, even
+        // if the user changed it mid-session (e.g. switched en-US -> ru-RU).
+        const meta = getMeta()
         lastMeta = meta
         const verification = {
             totalScenarios: total,
@@ -608,7 +613,9 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     })
 
     root.querySelector("#btn-run-all")!.addEventListener("click", async () => {
-        const meta = lastMeta ?? getMeta()
+        // PR-9d.2 fix: use the currently selected session settings,
+        // not a stale lastMeta from an earlier click.
+        const meta = getMeta()
         lastMeta = meta
 
         for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
