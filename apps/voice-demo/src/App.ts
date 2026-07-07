@@ -300,6 +300,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
                 <div style="margin-bottom:0.4rem; color:#888; font-size:0.8rem;">Generated at: ${generatedAt}</div>
                 <div style="margin-bottom:0.4rem"><strong>Status:</strong> <span style="color:${color};font-weight:bold">${status}</span></div>
                 <div style="margin-bottom:0.4rem"><strong>Tester:</strong> ${report?.Session?.tester || "Tester"} | <strong>Language:</strong> ${report?.Session?.language || "en-US"}</div>
+                <div style="margin-bottom:0.4rem"><strong>Mode:</strong> ${report?.ValidationMode || "Automatic"} | <strong>Input Source:</strong> ${report?.TestConfiguration?.inputSource || "inject"}</div>
+                <div style="margin-bottom:0.4rem"><strong>Recognition:</strong> ${report?.TestConfiguration?.recognitionProvider || "Browser"} | <strong>Speech:</strong> ${report?.TestConfiguration?.speechProvider || "Browser"} | <strong>Scenario Set:</strong> ${report?.TestConfiguration?.scenarioSet || "builtin"}</div>
                 <div style="margin-bottom:0.4rem"><strong>Scenarios:</strong> ${report?.Summary?.totalScenarios || 0} (Passed: ${report?.Summary?.passed || 0}, Failed: ${report?.Summary?.failed || 0})</div>
                 <div><strong>Duration:</strong> ${report?.Summary?.durationMs || 0} ms</div>
             </div>
@@ -486,7 +488,10 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             errors: [] as string[]
         }
         const entries = app.executionLog.getEntries()
-        const report = buildValidationReport(meta, startedAt, verification, entries)
+        const report = buildValidationReport(meta, startedAt, verification, entries, {
+            validationMode: "Interactive",
+            inputSource: inputSourceSelect.value
+        })
         report.ManualValidation = {
             results: manualResults,
             warnings,
@@ -569,6 +574,14 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     // ---- Existing wiring (unchanged, now also resolves micWaiter) ----
 
+    // PR-9d.2 fix: subscribe to interaction Events/Speak up front,
+    // regardless of mode, WITHOUT requesting the microphone. Without
+    // this, Automatic "Run All" and Inject Action never showed any
+    // Event/Speak entries in the Execution Log — only the initial
+    // Action — because that subscription previously only happened
+    // inside channel.start() (which also starts the microphone).
+    app.channel.ensureInteractionSubscribed()
+
     app.channel.onAction = (action) => {
         app.logger.logAction(action)
         refreshLog()
@@ -650,7 +663,10 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         verificationResult.innerHTML = `<span style="color:green;font-weight:bold">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
 
         const entries = app.executionLog.getEntries()
-        const report = buildValidationReport(meta, startedAt, verification, entries)
+        const report = buildValidationReport(meta, startedAt, verification, entries, {
+            validationMode: "Automatic",
+            inputSource: "inject"
+        })
         lastReport = report
         reportHistory.add(report)
         refreshHistory()

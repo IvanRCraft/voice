@@ -10,11 +10,20 @@ export interface ReportSummary {
 }
 
 // App.ts kutayotgan asosiy funksiya
+//
+// PR-9d.2 fix (per client engineering review): the report previously
+// had no record of which STT/TTS provider, scenario set, or input
+// source (mic vs Inject Action) were used, and no explicit label for
+// which validation mode (Automatic/Interactive) produced it. Without
+// this, the report can't be used to compare results across different
+// providers/configurations later, and a reader has to guess why
+// ManualValidation is empty. Both are now recorded explicitly.
 export function buildValidationReport(
   meta: any,
   startedAt: string,
   verification: any,
-  executionLog: any
+  executionLog: any,
+  options?: { validationMode?: string; inputSource?: string }
 ) {
   // Statusni avtomatik hisoblash
   let status: 'PASS' | 'PASS WITH WARNINGS' | 'FAIL' = 'PASS';
@@ -41,6 +50,13 @@ export function buildValidationReport(
       env: meta.environment || "demo",
       backendUrl: "https://ibronevik.ru/taxi/c/gruzvill"
     },
+    TestConfiguration: {
+      recognitionProvider: meta.recognitionProvider || "Browser",
+      speechProvider: meta.speechProvider || "Browser",
+      scenarioSet: meta.scenarioSet || "builtin",
+      inputSource: options?.inputSource || "inject"
+    },
+    ValidationMode: options?.validationMode || "Automatic",
     ScenarioStatistics: {
       total: verification.totalScenarios || 0
     },

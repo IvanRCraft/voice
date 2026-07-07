@@ -10,14 +10,35 @@ export class VoiceChannel {
     constructor(options) {
         this.options = options;
     }
+    /**
+     * PR-9d.2 fix: subscribes to InteractionContract events WITHOUT
+     * starting the microphone/recognition provider. This is idempotent
+     * (safe to call multiple times / already subscribed).
+     *
+     * Previously, Event/Speak observability only worked when start()
+     * had been called (which also starts the microphone). Flows that
+     * dispatch actions directly via injectAction() — Automatic "Run
+     * All", the manual "Inject action" button, and Interactive Runner
+     * in Inject Action input-source mode — never called start(), so
+     * their emitted Events/Speak were never observed: the Execution
+     * Log only ever showed the initial Action, with no corresponding
+     * Event or Speak entries. Calling this once up front (regardless
+     * of mode) fixes that without requesting microphone access.
+     */
+    ensureInteractionSubscribed() {
+        if (this.unsubscribeInteraction) {
+            return;
+        }
+        this.unsubscribeInteraction =
+            this.options.interaction.subscribe((event) => this.handleInteractionEvent(event));
+    }
     async start() {
         if (this.state === VoiceChannelState.Running) {
             return;
         }
         this.unsubscribeRecognition =
             this.options.recognition.subscribe((result) => this.handleRecognitionResult(result));
-        this.unsubscribeInteraction =
-            this.options.interaction.subscribe((event) => this.handleInteractionEvent(event));
+        this.ensureInteractionSubscribed();
         await this.options.recognition.start();
         this.state = VoiceChannelState.Running;
     }
