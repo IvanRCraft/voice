@@ -472,6 +472,22 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         controller.nextStep()
         interactiveIndex++
         loadCurrentPrompt()
+        autoStartNextStepIfNeeded()
+    }
+
+    /**
+     * PR-9d.2 UX fix (per client feedback, "Variant A"): only the very
+     * first step of a session requires the tester to press
+     * Start Listening / Send explicitly. Every step after that starts
+     * automatically as soon as it's loaded, so "Next Step" genuinely
+     * means "finish this step AND begin the next one" instead of only
+     * switching the displayed prompt while secretly waiting for a
+     * second, unlabeled click.
+     */
+    function autoStartNextStepIfNeeded(): void {
+        if (controller.getState() !== StepState.Finished) {
+            void performCurrentStep()
+        }
     }
 
     function finishInteractiveSession(): void {
@@ -569,6 +585,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         controller.skipStep()
         interactiveIndex++
         loadCurrentPrompt()
+        autoStartNextStepIfNeeded()
     })
 
     btnPause.addEventListener("click", () => {
