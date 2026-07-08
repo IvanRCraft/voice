@@ -62,7 +62,16 @@ export function buildValidationReport(
     },
     Verification: verification,
     ManualValidation: {},
-    ExecutionLog: executionLog,
+    // PR-9d.2 fix: ExecutionLog.getEntries() returns a live reference
+    // to its internal array, not a copy. Embedding that reference
+    // directly in the report meant that starting a NEW session later
+    // (which calls executionLog.clear(), truncating the SAME array)
+    // retroactively emptied the ALREADY-SAVED report's ExecutionLog
+    // too — this is why saved/downloaded reports showed
+    // "ExecutionLog": [] even though the log was populated when the
+    // report was generated. Copying the array here decouples the
+    // report from any future mutation of the live log.
+    ExecutionLog: Array.isArray(executionLog) ? [...executionLog] : executionLog,
     Summary: {
       status: status,
       totalScenarios: verification.totalScenarios || 0,
