@@ -563,6 +563,20 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     btnRepeat.addEventListener("click", async () => {
         if (currentResult) currentResult.repeated++
+
+        // PR-9d.2 fix (per client checklist): mark repeats explicitly
+        // in the Execution Log with the SAME step number, so it's
+        // clear the following Action/Event/Speak are a retry of this
+        // step, not a new one.
+        app.executionLog.append("Step", {
+            number: interactiveIndex + 1,
+            total: interactiveScenarios.length,
+            trigger: interactiveScenarios[interactiveIndex],
+            repeat: true,
+            attempt: (currentResult?.repeated ?? 0) + 1
+        })
+        refreshLog()
+
         await performCurrentStep()
     })
 

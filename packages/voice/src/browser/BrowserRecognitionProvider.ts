@@ -2,51 +2,68 @@
  * Voice Contracts — Browser Implementation
  *
  * Implements RecognitionProvider using Browser Web Speech API.
+ *
+ * Does NOT know about:
+ *  - Taxi
+ *  - Driver
+ *  - FSM
+ *  - Interaction Contract
+ *  - commands
+ *  - events
  */
-
 import type {
     RecognitionProvider,
     Unsubscribe
 } from "../provider/RecognitionProvider"
-
 import type { RecognitionResult } from "../types/RecognitionResult"
-
 import type {
     SpeechRecognition,
     SpeechRecognitionConstructor,
-    SpeechRecognitionEvent,
-    SpeechRecognitionErrorEvent
+    SpeechRecognitionEvent
 } from "./browser-types"
 
 export class BrowserRecognitionProvider implements RecognitionProvider {
-
-    private recognition: SpeechRecognition
-    private language: string
-
+    private readonly recognition: SpeechRecognition
     private readonly listeners =
         new Set<(result: RecognitionResult) => void>()
 
-    public onError: ((message: string) => void) | null = null
-    public onEnd: (() => void) | null = null
+    /**
+     * PR-9d.2 fix: the Web Speech API's stop() is asynchronous under
+     * the hood — the real "end" of the session only happens when the
+     * 'onend' event fires, some time after recognition.stop() is
+     * called. The previous implementation resolved stop() immediately
+     * without waiting for that, so callers doing
+     * `await stop(); await start()` back-to-back (as the Interactive
+     * Runner does between steps) could start a new session before the
+     * browser had actually finished the previous one. That race
+     * occasionally caused the engine to deliver the same result twice
+     * (observed as a duplicated Action/Event/Speak triple for a single
+     * spoken step). stop() now properly waits for the real 'onend'
+     * event before resolving, so start() is never called while a
+     * previous session is still winding down.
+     */
+    private isActive = false
+    private pendingEndResolvers: Array<() => void> = []
 
     constructor(language = "ru-RU") {
-        this.language = language
         this.recognition = this.createRecognition()
-        this.configureRecognition(this.language)
+        this.configureRecognition(language)
         this.bindEvents()
     }
 
-    setLanguage(language: string): void {
-        this.language = language
-        this.recognition.lang = language
-    }
-
     async start(): Promise<void> {
+        this.isActive = true
         this.recognition.start()
     }
 
     async stop(): Promise<void> {
-        this.recognition.stop()
+        if (!this.isActive) {
+            return
+        }
+        await new Promise<void>((resolve) => {
+            this.pendingEndResolvers.push(resolve)
+            this.recognition.stop()
+        })
     }
 
     subscribe(
@@ -58,17 +75,19 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
         }
     }
 
+    setLanguage(language: string): void {
+        this.recognition.lang = language
+    }
+
     private createRecognition(): SpeechRecognition {
         const Ctor: SpeechRecognitionConstructor | undefined =
             window.SpeechRecognition ??
             window.webkitSpeechRecognition
-
         if (!Ctor) {
             throw new Error(
                 "SpeechRecognition API is not supported in this browser."
             )
         }
-
         return new Ctor()
     }
 
@@ -83,38 +102,39 @@ export class BrowserRecognitionProvider implements RecognitionProvider {
         this.recognition.onresult = (event: SpeechRecognitionEvent) => {
             this.handleResult(event)
         }
-
-        this.recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-            this.onError?.(event.error ?? "unknown-error")
+        this.recognition.onerror = () => {
+            // Intentionally left empty: this provider does not decide
+            // how errors should be surfaced to the application. A
+            // dedicated error channel can be added to the contract later.
+            // Note: onerror is typically followed by onend, which will
+            // still resolve any pending stop() waiters below.
         }
-
-        this.recognition.onend = () => {
-            this.onEnd?.()
+        // PR-9d.2 fix: track the real end of a recognition session so
+        // stop() can wait for it instead of resolving instantly.
+        ;(this.recognition as unknown as { onend: (() => void) | null }).onend = () => {
+            this.isActive = false
+            const resolvers = this.pendingEndResolvers
+            this.pendingEndResolvers = []
+            resolvers.forEach((resolve) => resolve())
         }
     }
 
     private handleResult(event: SpeechRecognitionEvent): void {
         const resultItem = event.results.item(event.resultIndex)
-
         if (!resultItem || resultItem.length === 0) {
             return
         }
-
         const alternative = resultItem.item(0)
-
         if (!alternative) {
             return
         }
-
         const result: RecognitionResult = {
             text: alternative.transcript,
             confidence: alternative.confidence,
             language: this.recognition.lang
         }
-
         for (const listener of this.listeners) {
             listener(result)
         }
     }
-
 }
