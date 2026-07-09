@@ -138,6 +138,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
                 <div id="int-summary-box" style="display:none; background:#eef7ee; border:1px solid #b6d7b6; border-radius:4px; padding:0.8rem; margin-top:0.6rem">
                     <div style="font-weight:bold; margin-bottom:0.4rem">Session Summary</div>
                     <div id="int-summary-content"></div>
+                    <button id="int-btn-restart" style="margin-top:0.6rem">↻ Start New Session</button>
                 </div>
             </div>
 
@@ -201,6 +202,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     const btnSaveComment = root.querySelector<HTMLButtonElement>("#int-btn-save-comment")!
     const intSummaryBox = root.querySelector<HTMLDivElement>("#int-summary-box")!
     const intSummaryContent = root.querySelector<HTMLDivElement>("#int-summary-content")!
+    const btnRestart = root.querySelector<HTMLButtonElement>("#int-btn-restart")!
 
     const btnNext = root.querySelector<HTMLButtonElement>("#int-btn-next")!
     const btnRepeat = root.querySelector<HTMLButtonElement>("#int-btn-repeat")!
@@ -656,6 +658,20 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             execLogEl.textContent = ""
             startInteractiveSession()
         }
+    })
+
+    // PR-9d.2 fix (per client feedback): after a session finished,
+    // there was no visible way to start a new one — the top Connect/
+    // Start/Stop/Run All buttons don't apply to Interactive mode, and
+    // toggling the Validation Mode dropdown away and back is not an
+    // obvious action to a tester. This button restarts the Interactive
+    // session directly, right next to the summary the tester is
+    // already looking at.
+    btnRestart.addEventListener("click", () => {
+        startedAt = new Date().toISOString()
+        app.executionLog.clear()
+        execLogEl.textContent = ""
+        startInteractiveSession()
     })
 
     // ---- Existing wiring (unchanged, now also resolves micWaiter) ----
