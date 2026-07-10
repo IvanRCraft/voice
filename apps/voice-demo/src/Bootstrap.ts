@@ -18,6 +18,7 @@ import { ExecutionLog, LogDispatcher, ConsoleLogSink, MemoryLogSink } from "../.
 import type { InteractionContract } from "../../../packages/interaction-contract/dist/index"
 import { DemoLogger } from "./DemoLogger"
 import { BackendClient } from "./BackendClient"
+
 export interface BenchApp {
     readonly channel: VoiceChannel
     readonly logger: DemoLogger
@@ -27,7 +28,9 @@ export interface BenchApp {
     readonly backend: BackendClient
     readonly interaction: InteractionContract
     readonly recognition: BrowserRecognitionProvider
+    readonly speech: BrowserSpeechProvider
 }
+
 export function bootstrap(language = "en-US"): BenchApp {
     const registry = new ScenarioRegistry()
     registerBuiltinScenarios(registry)
@@ -49,5 +52,5 @@ export function bootstrap(language = "en-US"): BenchApp {
         speechMapper: new DefaultSpeechMapper()
     })
     const backend = new BackendClient()
-    return { channel, logger, executionLog, memorySink, registry, backend, interaction, recognition }
+    return { channel, logger, executionLog, memorySink, registry, backend, interaction, recognition, speech }
 }

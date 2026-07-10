@@ -756,6 +756,26 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         }
     }
 
+    // PR-9d.2 fix (per client feedback, item 5): the old "Speak" log
+    // entry only meant "we asked the browser to speak this text" — it
+    // said nothing about whether playback actually started, finished,
+    // or failed. These three hooks log the browser's REAL
+    // speechSynthesis lifecycle events, so a reader can tell the
+    // difference between "we requested speech" and "the tester's
+    // speakers genuinely played it".
+    app.speech.onStarted = (text) => {
+        app.executionLog.append("SpeechStarted", { text })
+        refreshLog()
+    }
+    app.speech.onFinished = (text) => {
+        app.executionLog.append("SpeechFinished", { text })
+        refreshLog()
+    }
+    app.speech.onError = (text, message) => {
+        app.executionLog.append("SpeechError", { text, message })
+        refreshLog()
+    }
+
     root.querySelector("#btn-connect")!.addEventListener("click", async () => {
         const meta = getMeta()
         lastMeta = meta
