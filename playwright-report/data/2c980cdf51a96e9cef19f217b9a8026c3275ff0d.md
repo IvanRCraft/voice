@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: smoke.spec.ts >> Smoke Suite >> 6. required data-testid hooks exist for automated testing
-- Location: tests\playwright\smoke.spec.ts:57:5
+- Name: interactive.spec.ts >> Interactive mode (Inject Action) >> Skip Step marks the step as skipped in the summary
+- Location: tests\playwright\interactive.spec.ts:43:5
 
 # Error details
 

@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { setValidationMode, setInputSource, driveInteractiveStepWithInject } from "./utils/helpers"
+import { setValidationMode, setInputSource, completeInteractiveSessionWithInject } from "./utils/helpers"
 
 /**
  * PR-10: Report generation regression tests.
@@ -11,9 +11,7 @@ test.describe("Report generation", () => {
         await page.goto("/")
         await setValidationMode(page, "interactive")
         await setInputSource(page, "inject")
-        for (let i = 0; i < 3; i++) {
-            await driveInteractiveStepWithInject(page)
-        }
+        await completeInteractiveSessionWithInject(page)
 
         const report = page.getByTestId("last-report")
         await expect(report).toContainText("Mode: Interactive")
@@ -30,9 +28,7 @@ test.describe("Report generation", () => {
         await page.goto("/")
         await setValidationMode(page, "interactive")
         await setInputSource(page, "inject")
-        for (let i = 0; i < 3; i++) {
-            await driveInteractiveStepWithInject(page)
-        }
+        await completeInteractiveSessionWithInject(page)
 
         const firstJson = JSON.parse(await page.locator("#json-report").innerText())
         expect(firstJson.ExecutionLog.length).toBeGreaterThan(0)

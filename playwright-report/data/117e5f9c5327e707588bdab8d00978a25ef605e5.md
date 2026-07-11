@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: smoke.spec.ts >> Smoke Suite >> 2. Session Panel has sensible default values
-- Location: tests\playwright\smoke.spec.ts:23:5
+- Name: interactive.spec.ts >> Interactive mode (Inject Action) >> Session Summary shows 3 fully confirmed scenarios with no repeats/skips
+- Location: tests\playwright\interactive.spec.ts:28:5
 
 # Error details
 

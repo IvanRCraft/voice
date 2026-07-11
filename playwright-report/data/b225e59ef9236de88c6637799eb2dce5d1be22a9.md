@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: smoke.spec.ts >> Smoke Suite >> 4. Input Source toggles Inject/Mic controls correctly
-- Location: tests\playwright\smoke.spec.ts:38:5
+- Name: interactive.spec.ts >> Interactive mode (Inject Action) >> Start New Session resets the Runner back to step 1
+- Location: tests\playwright\interactive.spec.ts:36:5
 
 # Error details
 

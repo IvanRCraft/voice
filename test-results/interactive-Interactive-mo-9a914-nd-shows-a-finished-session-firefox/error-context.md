@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: smoke.spec.ts >> Smoke Suite >> 5. Run All (Automatic) passes and populates the Execution Log
-- Location: tests\playwright\smoke.spec.ts:50:5
+- Name: interactive.spec.ts >> Interactive mode (Inject Action) >> completes all 3 steps and shows a finished session
+- Location: tests\playwright\interactive.spec.ts:21:5
 
 # Error details
 

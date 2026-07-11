@@ -22,15 +22,26 @@ export async function runAll(page: Page) {
 }
 
 /**
- * Drives one full Interactive step using Inject Action as the input
- * source (no real microphone required — suitable for CI). Clicks
- * Start/Next, confirms Recognized/Heard as "Верно"/"Услышал", and
- * waits for the confirmation UI to appear before doing so.
+ * PR-10 fix: this originally clicked Next Step to START every step,
+ * assuming a manual "Start Step, then confirm" pattern per step. But
+ * per the "Variant A" fix in App.ts, only the FIRST step of a session
+ * needs an explicit Start click — clicking "Next Step" to confirm a
+ * step ALSO auto-starts the next one. Calling the old per-step helper
+ * in a loop double-clicked "Next"/"Start" out of sync with the real
+ * state machine, causing flaky/failing CI runs. This drives an entire
+ * Interactive session (using Inject Action) with the correct number
+ * of clicks: one to start, then one confirm+advance per step.
  */
-export async function driveInteractiveStepWithInject(page: Page) {
+export async function completeInteractiveSessionWithInject(page: Page, steps = 3) {
+    // Starts step 1 (only step that needs an explicit "start" click).
     await page.locator("#int-btn-next").click()
-    await page.locator("#int-btn-recognized-yes").waitFor()
-    await page.locator("#int-btn-recognized-yes").click()
-    await page.locator("#int-btn-heard-yes").click()
-    await page.locator("#int-btn-next").click()
+
+    for (let i = 0; i < steps; i++) {
+        await page.locator("#int-btn-recognized-yes").waitFor()
+        await page.locator("#int-btn-recognized-yes").click()
+        await page.locator("#int-btn-heard-yes").click()
+        // Commits the current step AND auto-starts the next one
+        // (or finishes the session, on the last iteration).
+        await page.locator("#int-btn-next").click()
+    }
 }
