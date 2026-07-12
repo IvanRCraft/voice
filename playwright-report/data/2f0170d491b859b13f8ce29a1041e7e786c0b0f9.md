@@ -7,7 +7,7 @@
 # Test info
 
 - Name: smoke.spec.ts >> Smoke Suite >> 6. required data-testid hooks exist for automated testing
-- Location: tests\playwright\smoke.spec.ts:95:5
+- Location: tests\playwright\smoke.spec.ts:100:5
 
 # Error details
 

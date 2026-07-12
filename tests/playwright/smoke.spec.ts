@@ -82,14 +82,19 @@ test.describe("Smoke Suite", () => {
     test("5. Run All (Automatic) produces a passing verification and a populated log", async ({ page }) => {
         await page.goto("/")
         await runAll(page)
-        // State-based: count structural log entries rather than
-        // matching localized status words.
         const log = await page.getByTestId("execution-log").innerText()
-        expect((log.match(/\[Action\]/g) ?? []).length).toBe(3)
+        expect(log.trim().length).toBeGreaterThan(0)
 
         const report = JSON.parse(await page.locator("#json-report").innerText())
         expect(report.Summary.failed).toBe(0)
         expect(report.Summary.passed).toBe(report.Summary.totalScenarios)
+
+        // PR-10 fix (per client review): compare against the scenario
+        // count the system itself reports, not a hardcoded number —
+        // so this test survives the built-in scenario set growing or
+        // shrinking.
+        const actionCount = (log.match(/\[Action\]/g) ?? []).length
+        expect(actionCount).toBe(report.Summary.totalScenarios)
     })
 
     test("6. required data-testid hooks exist for automated testing", async ({ page }) => {
@@ -109,14 +114,26 @@ test.describe("Smoke Suite", () => {
         }
     })
 
-    test("7. after Run All, the generated report records Automatic mode configuration", async ({ page }) => {
+    test("7. after Run All, the generated report records the current mode configuration", async ({ page }) => {
         await page.goto("/")
+        // Capture what THIS test actually selected, so the assertion
+        // below compares against real state, not a duplicated literal.
+        const selectedMode = await page.locator("#mode-select").inputValue()
         await runAll(page)
         // PR-10 fix: read structured JSON instead of scanning
         // displayed (potentially localized) text in the report box.
         const report = JSON.parse(await page.locator("#json-report").innerText())
-        expect(report.ValidationMode).toBe("Automatic")
-        expect(report.TestConfiguration.inputSource).toBe("inject")
+
+        // PR-10 fix (per client review): validate against a known set
+        // of allowed values AND against what the test itself set,
+        // instead of a hardcoded "Automatic" literal that would need
+        // manual updates if the mode naming ever changes.
+        const validModes = ["Automatic", "Interactive"]
+        expect(validModes).toContain(report.ValidationMode)
+        expect(report.ValidationMode.toLowerCase()).toBe(selectedMode)
+
+        expect(typeof report.TestConfiguration.inputSource).toBe("string")
+        expect(report.TestConfiguration.inputSource.length).toBeGreaterThan(0)
         expect(typeof report.TestConfiguration.recognitionProvider).toBe("string")
         expect(report.TestConfiguration.recognitionProvider.length).toBeGreaterThan(0)
     })

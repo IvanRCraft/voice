@@ -7,7 +7,7 @@
 # Test info
 
 - Name: smoke.spec.ts >> Smoke Suite >> 11. Send Report before any report exists fails safely, not silently
-- Location: tests\playwright\smoke.spec.ts:157:5
+- Location: tests\playwright\smoke.spec.ts:174:5
 
 # Error details
 

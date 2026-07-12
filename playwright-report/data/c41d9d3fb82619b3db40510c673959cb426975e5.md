@@ -6,8 +6,8 @@
 
 # Test info
 
-- Name: smoke.spec.ts >> Smoke Suite >> 7. after Run All, the generated report records Automatic mode configuration
-- Location: tests\playwright\smoke.spec.ts:112:5
+- Name: smoke.spec.ts >> Smoke Suite >> 7. after Run All, the generated report records the current mode configuration
+- Location: tests\playwright\smoke.spec.ts:117:5
 
 # Error details
 

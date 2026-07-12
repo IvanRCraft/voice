@@ -7,7 +7,7 @@
 # Test info
 
 - Name: smoke.spec.ts >> Smoke Suite >> 8. Next Step is unreachable before an Interactive session has started
-- Location: tests\playwright\smoke.spec.ts:126:5
+- Location: tests\playwright\smoke.spec.ts:143:5
 
 # Error details
 
