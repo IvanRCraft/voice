@@ -226,9 +226,12 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     const btnHeardYes = root.querySelector<HTMLButtonElement>("#int-btn-heard-yes")!
     const btnHeardNo = root.querySelector<HTMLButtonElement>("#int-btn-heard-no")!
     const btnRunAll = root.querySelector<HTMLButtonElement>("#btn-run-all")!
+    const btnStart = root.querySelector<HTMLButtonElement>("#btn-start")!
+    const btnStop = root.querySelector<HTMLButtonElement>("#btn-stop")!
+    const btnInject = root.querySelector<HTMLButtonElement>("#btn-inject")!
 
     let startedAt = new Date().toISOString()
-    let runAllInProgress = false
+    let isRunning = false
     let lastReport: ReturnType<typeof buildValidationReport> | null = null
     let lastMeta: SessionMeta | null = null
 
@@ -810,6 +813,14 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         refreshLog()
     }
 
+    function setAutomaticRunLocked(locked: boolean): void {
+        isRunning = locked
+        btnRunAll.disabled = locked
+        btnStart.disabled = locked
+        btnStop.disabled = locked
+        btnInject.disabled = locked
+    }
+
     root.querySelector("#btn-connect")!.addEventListener("click", async () => {
         const meta = getMeta()
         lastMeta = meta
@@ -822,7 +833,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         mailLabel.textContent = session.status === "connected" ? "Ready" : "—"
     })
 
-    root.querySelector("#btn-start")!.addEventListener("click", async () => {
+    btnStart.addEventListener("click", async () => {
+        if (isRunning) return
         startedAt = new Date().toISOString()
         app.executionLog.clear()
         execLogEl.textContent = ""
@@ -830,25 +842,26 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         obsState.textContent = app.channel.getState()
     })
 
-    root.querySelector("#btn-stop")!.addEventListener("click", async () => {
+    btnStop.addEventListener("click", async () => {
+        if (isRunning) return
         await app.channel.stop()
         obsState.textContent = app.channel.getState()
     })
 
-    root.querySelector("#btn-inject")!.addEventListener("click", async () => {
+    btnInject.addEventListener("click", async () => {
+        if (isRunning) return
         const type = injectSelect.value
         await app.channel.injectAction({ type, payload: {} })
         refreshLog()
     })
 
     btnRunAll.addEventListener("click", async () => {
-        // PR-9e.2 fix: block concurrent Run All — a second click while a
-        // run is in progress corrupts ExecutionLog and produces an
-        // internally inconsistent report.
-        if (runAllInProgress) return
+        // PR-9e.2: isRunning prevents overlapping Automatic cycles. Without
+        // this guard, rapid Run All clicks start parallel loops and corrupt
+        // ExecutionLog / the generated report.
+        if (isRunning) return
 
-        runAllInProgress = true
-        btnRunAll.disabled = true
+        setAutomaticRunLocked(true)
 
         try {
             startedAt = new Date().toISOString()
@@ -894,8 +907,7 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
             updateReportPreview(report)
             jsonReportEl.textContent = JSON.stringify(report, null, 2)
         } finally {
-            runAllInProgress = false
-            btnRunAll.disabled = false
+            setAutomaticRunLocked(false)
         }
     })
 

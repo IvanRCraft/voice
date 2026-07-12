@@ -122,6 +122,19 @@ export function assertAutomaticProgressSequence(states: string[]) {
     }
 }
 
+/** Waits until Automatic Run All shows an in-progress public progress state. */
+export async function waitForAutomaticRunInProgress(page: Page) {
+    await expect.poll(async () => {
+        return await page.locator("#obs-progress").innerText()
+    }).toMatch(/^Running scenario \d+ of \d+$/)
+}
+
+/** Counts Action entries currently visible in the Execution Log panel. */
+export async function countActionLogEntries(page: Page): Promise<number> {
+    const logText = await page.getByTestId("execution-log").innerText()
+    return (logText.match(/\[Action\]/g) ?? []).length
+}
+
 /** Reads the structured JSON report rendered in the public report panel. */
 export async function readJsonReport(page: Page): Promise<ValidationReportJson> {
     const text = await page.locator("#json-report").innerText()

@@ -12,6 +12,7 @@ import {
     assertConfigurationMatchesSession,
     assertExecutionLog,
     assertAutomaticProgressSequence,
+    waitForAutomaticRunInProgress,
     type ValidationReportJson
 } from "./utils/helpers"
 
@@ -207,12 +208,25 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
     test.describe("11. Negative scenarios", () => {
 
-        test("second Run All click during execution is blocked", async ({ page }) => {
-            await page.locator("#btn-run-all").click()
-            await expect(page.locator("#btn-run-all")).toBeDisabled()
+        test("blocks a second Run All while the first automatic cycle is still running", async ({ page }) => {
+            const started = page.locator("#btn-run-all").click()
+            await waitForAutomaticRunInProgress(page)
 
+            await expect(page.locator("#btn-run-all")).toBeDisabled()
+            await expect(page.locator("#btn-start")).toBeDisabled()
+            await expect(page.locator("#btn-stop")).toBeDisabled()
+            await expect(page.locator("#btn-inject")).toBeDisabled()
+
+            // Simulates a rapid second click reaching the handler while locked.
+            await page.locator("#btn-run-all").dispatchEvent("click")
+
+            await started
             await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
+
             await expect(page.locator("#btn-run-all")).toBeEnabled()
+            await expect(page.locator("#btn-start")).toBeEnabled()
+            await expect(page.locator("#btn-stop")).toBeEnabled()
+            await expect(page.locator("#btn-inject")).toBeEnabled()
 
             const report = await readJsonReport(page)
             const logText = await page.getByTestId("execution-log").innerText()
@@ -220,20 +234,18 @@ test.describe("PR-9e.2 Automatic Suite", () => {
             assertSummaryConsistency(report)
         })
 
-        test("Start during Run All does not hang or crash", async ({ page }) => {
+        test("Start remains disabled while Run All is in progress", async ({ page }) => {
             await page.locator("#btn-run-all").click()
-            await page.locator("#btn-start").click()
-
+            await waitForAutomaticRunInProgress(page)
+            await expect(page.locator("#btn-start")).toBeDisabled()
             await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
-            await expect(page.locator("#app")).not.toBeEmpty()
         })
 
-        test("Stop during Run All does not hang or crash", async ({ page }) => {
+        test("Stop remains disabled while Run All is in progress", async ({ page }) => {
             await page.locator("#btn-run-all").click()
-            await page.locator("#btn-stop").click()
-
+            await waitForAutomaticRunInProgress(page)
+            await expect(page.locator("#btn-stop")).toBeDisabled()
             await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
-            await expect(page.locator("#app")).not.toBeEmpty()
         })
 
         test("Download Report before any report exists fails safely", async ({ page }) => {
