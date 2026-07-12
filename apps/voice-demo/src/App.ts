@@ -225,8 +225,10 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     const btnRecNo = root.querySelector<HTMLButtonElement>("#int-btn-recognized-no")!
     const btnHeardYes = root.querySelector<HTMLButtonElement>("#int-btn-heard-yes")!
     const btnHeardNo = root.querySelector<HTMLButtonElement>("#int-btn-heard-no")!
+    const btnRunAll = root.querySelector<HTMLButtonElement>("#btn-run-all")!
 
     let startedAt = new Date().toISOString()
+    let runAllInProgress = false
     let lastReport: ReturnType<typeof buildValidationReport> | null = null
     let lastMeta: SessionMeta | null = null
 
@@ -839,45 +841,62 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         refreshLog()
     })
 
-    root.querySelector("#btn-run-all")!.addEventListener("click", async () => {
-        // PR-9d.2 fix: use the currently selected session settings,
-        // not a stale lastMeta from an earlier click.
-        const meta = getMeta()
-        lastMeta = meta
+    btnRunAll.addEventListener("click", async () => {
+        // PR-9e.2 fix: block concurrent Run All — a second click while a
+        // run is in progress corrupts ExecutionLog and produces an
+        // internally inconsistent report.
+        if (runAllInProgress) return
 
-        for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
-            obsProgress.textContent = `Running scenario ${i + 1} of ${SCENARIO_TRIGGERS.length}`
-            await app.channel.injectAction({ type: SCENARIO_TRIGGERS[i], payload: {} })
+        runAllInProgress = true
+        btnRunAll.disabled = true
 
-            await new Promise<void>(resolve => {
-                setTimeout(() => resolve(), 700);
-            });
+        try {
+            startedAt = new Date().toISOString()
+            app.executionLog.clear()
+            execLogEl.textContent = ""
 
-            refreshLog()
+            // PR-9d.2 fix: use the currently selected session settings,
+            // not a stale lastMeta from an earlier click.
+            const meta = getMeta()
+            lastMeta = meta
+
+            for (let i = 0; i < SCENARIO_TRIGGERS.length; i++) {
+                obsProgress.textContent = `Running scenario ${i + 1} of ${SCENARIO_TRIGGERS.length}`
+                await app.channel.injectAction({ type: SCENARIO_TRIGGERS[i], payload: {} })
+
+                await new Promise<void>(resolve => {
+                    setTimeout(() => resolve(), 700)
+                })
+
+                refreshLog()
+            }
+
+            obsProgress.textContent = "Done"
+
+            const totalScenariosCount = app.registry.list().length || 3
+            const verification = {
+                totalScenarios: totalScenariosCount,
+                passed: totalScenariosCount,
+                failed: 0,
+                errors: [] as string[]
+            }
+
+            verificationResult.innerHTML = `<span style="color:green;font-weight:bold">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
+
+            const entries = app.executionLog.getEntries()
+            const report = buildValidationReport(meta, startedAt, verification, entries, {
+                validationMode: "Automatic",
+                inputSource: "inject"
+            })
+            lastReport = report
+            reportHistory.add(report)
+            refreshHistory()
+            updateReportPreview(report)
+            jsonReportEl.textContent = JSON.stringify(report, null, 2)
+        } finally {
+            runAllInProgress = false
+            btnRunAll.disabled = false
         }
-
-        obsProgress.textContent = "Done"
-
-        const totalScenariosCount = app.registry.list().length || 3
-        const verification = {
-            totalScenarios: totalScenariosCount,
-            passed: totalScenariosCount,
-            failed: 0,
-            errors: [] as string[]
-        }
-
-        verificationResult.innerHTML = `<span style="color:green;font-weight:bold">✅ PASS (${verification.passed}/${verification.totalScenarios})</span>`
-
-        const entries = app.executionLog.getEntries()
-        const report = buildValidationReport(meta, startedAt, verification, entries, {
-            validationMode: "Automatic",
-            inputSource: "inject"
-        })
-        lastReport = report
-        reportHistory.add(report)
-        refreshHistory()
-        updateReportPreview(report)
-        jsonReportEl.textContent = JSON.stringify(report, null, 2)
     })
 
     root.querySelector("#btn-download")!.addEventListener("click", () => {

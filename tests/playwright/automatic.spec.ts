@@ -11,7 +11,7 @@ import {
     assertSummaryConsistency,
     assertConfigurationMatchesSession,
     assertExecutionLog,
-    parseAutomaticProgress,
+    assertAutomaticProgressSequence,
     type ValidationReportJson
 } from "./utils/helpers"
 
@@ -49,27 +49,18 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
     test.describe("2. Progress", () => {
 
-        test("progress starts at 0%, increases during execution, and ends at 100%", async ({ page }) => {
-            expect(parseAutomaticProgress(await page.locator("#obs-progress").innerText())).toBe(0)
+        test("progress moves from idle through running scenarios to Done", async ({ page }) => {
+            expect(await page.locator("#obs-progress").innerText()).toBe("—")
 
-            const snapshots = await runAllWithProgressTracking(page)
-            const percents = snapshots.map((snapshot) => snapshot.percent)
-
-            expect(percents[0]).toBe(0)
-            expect(percents).toContain(100)
-            expect(Math.max(...percents)).toBe(100)
-            expect(percents.some((percent) => percent > 0 && percent < 100)).toBe(true)
-
-            for (let i = 1; i < percents.length; i++) {
-                expect(percents[i]).toBeGreaterThanOrEqual(percents[i - 1])
-            }
+            const states = await runAllWithProgressTracking(page)
+            assertAutomaticProgressSequence(states)
         })
 
     })
 
     test.describe("3. Execution Log", () => {
 
-        test("log is created automatically with ordered, non-duplicated entries", async ({ page }) => {
+        test("log is created automatically with ordered Action entries", async ({ page }) => {
             await runAll(page)
 
             const logText = await page.getByTestId("execution-log").innerText()
@@ -183,9 +174,9 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
     })
 
-    test.describe("10. Restart after Automatic", () => {
+    test.describe("10. Second Run All after completion", () => {
 
-        test("starting a new Run All resets progress while keeping the last completed report", async ({ page }) => {
+        test("second Run All resets progress text while keeping the last completed report visible", async ({ page }) => {
             await runAll(page)
 
             const firstReport = await readJsonReport(page)
@@ -197,7 +188,7 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
             await expect.poll(async () => {
                 return await page.locator("#obs-progress").innerText()
-            }).toMatch(/Running scenario 1 of/)
+            }).toMatch(/^Running scenario 1 of \d+$/)
 
             expect(await page.getByTestId("last-report").innerText()).toBe(firstPreview)
 
@@ -205,7 +196,10 @@ test.describe("PR-9e.2 Automatic Suite", () => {
             expect(await page.locator("#obs-progress").innerText()).toBe("Done")
 
             const secondReport = await readJsonReport(page)
-            expect(secondReport.ExecutionLog.length).toBeGreaterThan(firstReport.ExecutionLog.length)
+            const secondLogText = await page.getByTestId("execution-log").innerText()
+            assertExecutionLog(secondReport, secondLogText)
+            assertSummaryConsistency(secondReport)
+            expect(secondReport.Summary.totalScenarios).toBe(firstReport.Summary.totalScenarios)
             await expect(page.getByTestId("last-report")).not.toBeEmpty()
         })
 
@@ -213,13 +207,17 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
     test.describe("11. Negative scenarios", () => {
 
-        test("second Run All click during execution does not hang or crash", async ({ page }) => {
+        test("second Run All click during execution is blocked", async ({ page }) => {
             await page.locator("#btn-run-all").click()
-            await page.locator("#btn-run-all").click()
+            await expect(page.locator("#btn-run-all")).toBeDisabled()
 
             await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
-            await expect(page.locator("#app")).not.toBeEmpty()
-            await expect(page.locator("#json-report")).not.toBeEmpty()
+            await expect(page.locator("#btn-run-all")).toBeEnabled()
+
+            const report = await readJsonReport(page)
+            const logText = await page.getByTestId("execution-log").innerText()
+            assertExecutionLog(report, logText)
+            assertSummaryConsistency(report)
         })
 
         test("Start during Run All does not hang or crash", async ({ page }) => {

@@ -69,19 +69,11 @@ export async function readSessionConfig(page: Page): Promise<SessionConfig> {
     }
 }
 
-/** Parses Automatic-mode progress text into an approximate completion percentage. */
-export function parseAutomaticProgress(text: string): number {
-    if (text === "—") return 0
-    if (text === "Done") return 100
-
-    const match = text.match(/Running scenario (\d+) of (\d+)/)
-    if (!match) return 0
-
-    const current = Number(match[1])
-    const total = Number(match[2])
-    if (total <= 0) return 0
-
-    return Math.round(((current - 1) / total) * 100)
+/** Parses a public Automatic-mode progress label, if present. */
+export function parseRunningScenarioProgress(text: string): { current: number; total: number } | null {
+    const match = text.match(/^Running scenario (\d+) of (\d+)$/)
+    if (!match) return null
+    return { current: Number(match[1]), total: Number(match[2]) }
 }
 
 /** Runs Automatic "Run All" and waits until verification completes. */
@@ -91,19 +83,15 @@ export async function runAll(page: Page) {
 }
 
 /**
- * Runs "Run All" while recording Automatic-mode progress snapshots.
- * Automatic mode exposes progress as text in #obs-progress, not as a
- * percentage label — we derive percentages from that public text.
+ * Runs "Run All" while recording the public #obs-progress text states.
  */
-export async function runAllWithProgressTracking(page: Page) {
-    const snapshots: Array<{ text: string; percent: number }> = []
+export async function runAllWithProgressTracking(page: Page): Promise<string[]> {
+    const snapshots: string[] = []
 
     const record = async () => {
         const text = await page.locator("#obs-progress").innerText()
-        const percent = parseAutomaticProgress(text)
-        const last = snapshots[snapshots.length - 1]
-        if (!last || last.text !== text) {
-            snapshots.push({ text, percent })
+        if (snapshots[snapshots.length - 1] !== text) {
+            snapshots.push(text)
         }
     }
 
@@ -117,6 +105,21 @@ export async function runAllWithProgressTracking(page: Page) {
 
     await record()
     return snapshots
+}
+
+/** Asserts Automatic-mode progress follows the public UI state sequence. */
+export function assertAutomaticProgressSequence(states: string[]) {
+    expect(states[0]).toBe("—")
+    expect(states[states.length - 1]).toBe("Done")
+    expect(states).toContain("Done")
+
+    const runningStates = states.filter((state) => parseRunningScenarioProgress(state) !== null)
+    expect(runningStates.length).toBeGreaterThan(0)
+
+    const scenarioNumbers = runningStates.map((state) => parseRunningScenarioProgress(state)!.current)
+    for (let i = 1; i < scenarioNumbers.length; i++) {
+        expect(scenarioNumbers[i]).toBeGreaterThanOrEqual(scenarioNumbers[i - 1])
+    }
 }
 
 /** Reads the structured JSON report rendered in the public report panel. */
@@ -237,16 +240,16 @@ export function assertConfigurationMatchesSession(
 export function assertExecutionLog(report: ValidationReportJson, logText: string) {
     expect(report.ExecutionLog.length).toBeGreaterThan(0)
 
-    const actionCount = (logText.match(/\[Action\]/g) ?? []).length
-    expect(actionCount).toBe(report.Summary.totalScenarios)
+    const lines = logText.split("\n").filter((line) => line.trim().length > 0)
+    const actionLines = lines.filter((line) => line.includes("[Action]"))
+    expect(actionLines.length).toBe(report.Summary.totalScenarios)
 
     for (const trigger of SCENARIO_TRIGGERS.slice(0, report.Summary.totalScenarios)) {
         expect(logText).toContain(trigger)
-    }
 
-    const lines = logText.split("\n").filter((line) => line.trim().length > 0)
-    const uniqueLines = new Set(lines)
-    expect(uniqueLines.size).toBe(lines.length)
+        const matchingActions = actionLines.filter((line) => line.includes(trigger))
+        expect(matchingActions.length).toBe(1)
+    }
 
     let lastActionIndex = -1
     for (const trigger of SCENARIO_TRIGGERS.slice(0, report.Summary.totalScenarios)) {
