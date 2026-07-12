@@ -1,39 +1,257 @@
 import { test, expect } from "@playwright/test"
-import { runAll } from "./utils/helpers"
+import {
+    runAll,
+    runAllWithProgressTracking,
+    readSessionConfig,
+    readJsonReport,
+    downloadJsonReport,
+    dismissNextDialog,
+    setupBackendMocks,
+    assertRequiredReportSections,
+    assertSummaryConsistency,
+    assertConfigurationMatchesSession,
+    assertExecutionLog,
+    parseAutomaticProgress,
+    type ValidationReportJson
+} from "./utils/helpers"
 
 /**
- * PR-10: Automatic mode regression tests. Covers the "Run All" /
- * Inject Action path in more depth than the Smoke Suite.
+ * PR-9e.2 — Playwright Automatic Suite.
+ *
+ * Covers Automatic Runner end-to-end through the public Validation Bench
+ * UI and JSON report surface only. Uses Inject Action (no microphone).
  */
 
-test.describe("Automatic mode", () => {
+test.describe("PR-9e.2 Automatic Suite", () => {
 
-    test("Run All completes all 3 built-in scenarios", async ({ page }) => {
+    test.beforeEach(async ({ page }) => {
         await page.goto("/")
-        await runAll(page)
-        await expect(page.locator("#verification-result")).toContainText("PASS (3/3)")
+        await expect(page.locator("#mode-select")).toHaveValue("automatic")
     })
 
-    test("Execution Log contains the full Action/Event/Speak chain for every scenario", async ({ page }) => {
-        await page.goto("/")
-        await runAll(page)
-        const log = await page.getByTestId("execution-log").innerText()
-        for (const trigger of ["voice.recognized", "interaction.echo", "interaction.delayed"]) {
-            expect(log).toContain(trigger)
-        }
-        expect((log.match(/\[Action\]/g) ?? []).length).toBe(3)
-        expect((log.match(/\[Event\]/g) ?? []).length).toBe(3)
-        expect((log.match(/\[Speak\]/g) ?? []).length).toBe(3)
+    test.describe("1. Scenario execution", () => {
+
+        test("Run All completes every built-in scenario and produces a report", async ({ page }) => {
+            const config = await readSessionConfig(page)
+
+            await runAll(page)
+
+            await expect(page.locator("#verification-result")).toContainText(/PASS/)
+            const report = await readJsonReport(page)
+            expect(report.Summary.totalScenarios).toBeGreaterThan(0)
+            expect(report.Summary.passed).toBe(report.Summary.totalScenarios)
+            expect(report.Summary.failed).toBe(0)
+            expect(report.Session.startedAt).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+            assertConfigurationMatchesSession(report, config)
+        })
+
     })
 
-    test("Download JSON produces a file after Run All", async ({ page }) => {
-        await page.goto("/")
-        await runAll(page)
-        const [download] = await Promise.all([
-            page.waitForEvent("download"),
-            page.locator("#btn-download").click()
-        ])
-        expect(download.suggestedFilename()).toMatch(/validation-report-.*\.json$/)
+    test.describe("2. Progress", () => {
+
+        test("progress starts at 0%, increases during execution, and ends at 100%", async ({ page }) => {
+            expect(parseAutomaticProgress(await page.locator("#obs-progress").innerText())).toBe(0)
+
+            const snapshots = await runAllWithProgressTracking(page)
+            const percents = snapshots.map((snapshot) => snapshot.percent)
+
+            expect(percents[0]).toBe(0)
+            expect(percents).toContain(100)
+            expect(Math.max(...percents)).toBe(100)
+            expect(percents.some((percent) => percent > 0 && percent < 100)).toBe(true)
+
+            for (let i = 1; i < percents.length; i++) {
+                expect(percents[i]).toBeGreaterThanOrEqual(percents[i - 1])
+            }
+        })
+
+    })
+
+    test.describe("3. Execution Log", () => {
+
+        test("log is created automatically with ordered, non-duplicated entries", async ({ page }) => {
+            await runAll(page)
+
+            const logText = await page.getByTestId("execution-log").innerText()
+            expect(logText.trim().length).toBeGreaterThan(0)
+
+            const report = await readJsonReport(page)
+            assertExecutionLog(report, logText)
+        })
+
+    })
+
+    test.describe("4. Report sections", () => {
+
+        test("report contains Session, Configuration, Summary, Verification, and Execution Log", async ({ page }) => {
+            await runAll(page)
+
+            const report = await readJsonReport(page)
+            assertRequiredReportSections(report)
+
+            expect(typeof report.Session.tester).toBe("string")
+            expect(typeof report.TestConfiguration.recognitionProvider).toBe("string")
+            expect(typeof report.Summary.status).toBe("string")
+            expect(typeof report.Verification.totalScenarios).toBe("number")
+            expect(report.ExecutionLog.length).toBeGreaterThan(0)
+        })
+
+    })
+
+    test.describe("5. Summary consistency", () => {
+
+        test("Summary totals are internally consistent with Verification", async ({ page }) => {
+            await runAll(page)
+
+            const report = await readJsonReport(page)
+            assertSummaryConsistency(report)
+        })
+
+    })
+
+    test.describe("6. Configuration", () => {
+
+        test("report preserves the launch configuration from Session Panel", async ({ page }) => {
+            await page.locator("#s-language").selectOption("ru-RU")
+            await page.locator("#s-recognition").selectOption("OpenAI")
+            await page.locator("#s-speech").selectOption("Azure")
+            await page.locator("#s-scenario-set").fill("builtin")
+
+            const config = await readSessionConfig(page)
+            await runAll(page)
+
+            const report = await readJsonReport(page)
+            assertConfigurationMatchesSession(report, config)
+        })
+
+    })
+
+    test.describe("7. Verification", () => {
+
+        test("verification results exist and match the scenario count", async ({ page }) => {
+            await runAll(page)
+
+            const report = await readJsonReport(page)
+            expect(report.Verification.totalScenarios).toBe(report.Summary.totalScenarios)
+            expect(report.Verification.passed + report.Verification.failed).toBe(report.Verification.totalScenarios)
+            expect(Array.isArray(report.Verification.errors)).toBe(true)
+            expect(report.Verification.errors.length).toBe(0)
+
+            await expect(page.locator("#verification-result")).toContainText(
+                new RegExp(`PASS \\(${report.Verification.passed}/${report.Verification.totalScenarios}\\)`)
+            )
+        })
+
+    })
+
+    test.describe("8. Download JSON", () => {
+
+        test("download produces valid JSON matching the on-screen report structure", async ({ page }) => {
+            await runAll(page)
+
+            const uiReport = await readJsonReport(page)
+            const downloaded = await downloadJsonReport(page)
+
+            expect(downloaded).toEqual(uiReport)
+            assertRequiredReportSections(downloaded)
+            assertSummaryConsistency(downloaded)
+        })
+
+    })
+
+    test.describe("9. Send Report", () => {
+
+        test("Send Report transmits the same object as Download JSON", async ({ page }) => {
+            const capture: { sentReport?: ValidationReportJson } = {}
+            await setupBackendMocks(page, capture)
+
+            await page.locator("#btn-connect").click()
+            await expect(page.locator("#conn-label")).toContainText("Connected")
+
+            await runAll(page)
+            const uiReport = await readJsonReport(page)
+            const downloaded = await downloadJsonReport(page)
+
+            const dialogPromise = dismissNextDialog(page)
+            await page.locator("#btn-send").click()
+            expect(await dialogPromise).toBe("alert")
+
+            expect(capture.sentReport).toBeTruthy()
+            expect(capture.sentReport).toEqual(uiReport)
+            expect(capture.sentReport).toEqual(downloaded)
+        })
+
+    })
+
+    test.describe("10. Restart after Automatic", () => {
+
+        test("starting a new Run All resets progress while keeping the last completed report", async ({ page }) => {
+            await runAll(page)
+
+            const firstReport = await readJsonReport(page)
+            const firstPreview = await page.getByTestId("last-report").innerText()
+            expect(firstPreview.length).toBeGreaterThan(0)
+            expect(await page.locator("#obs-progress").innerText()).toBe("Done")
+
+            await page.locator("#btn-run-all").click()
+
+            await expect.poll(async () => {
+                return await page.locator("#obs-progress").innerText()
+            }).toMatch(/Running scenario 1 of/)
+
+            expect(await page.getByTestId("last-report").innerText()).toBe(firstPreview)
+
+            await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor()
+            expect(await page.locator("#obs-progress").innerText()).toBe("Done")
+
+            const secondReport = await readJsonReport(page)
+            expect(secondReport.ExecutionLog.length).toBeGreaterThan(firstReport.ExecutionLog.length)
+            await expect(page.getByTestId("last-report")).not.toBeEmpty()
+        })
+
+    })
+
+    test.describe("11. Negative scenarios", () => {
+
+        test("second Run All click during execution does not hang or crash", async ({ page }) => {
+            await page.locator("#btn-run-all").click()
+            await page.locator("#btn-run-all").click()
+
+            await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
+            await expect(page.locator("#app")).not.toBeEmpty()
+            await expect(page.locator("#json-report")).not.toBeEmpty()
+        })
+
+        test("Start during Run All does not hang or crash", async ({ page }) => {
+            await page.locator("#btn-run-all").click()
+            await page.locator("#btn-start").click()
+
+            await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
+            await expect(page.locator("#app")).not.toBeEmpty()
+        })
+
+        test("Stop during Run All does not hang or crash", async ({ page }) => {
+            await page.locator("#btn-run-all").click()
+            await page.locator("#btn-stop").click()
+
+            await page.locator("#verification-result").getByText(/PASS|FAIL/).waitFor({ timeout: 30_000 })
+            await expect(page.locator("#app")).not.toBeEmpty()
+        })
+
+        test("Download Report before any report exists fails safely", async ({ page }) => {
+            const dialogPromise = dismissNextDialog(page)
+            await page.locator("#btn-download").click()
+            expect(await dialogPromise).toBe("alert")
+            await expect(page.locator("#json-report")).toBeEmpty()
+        })
+
+        test("Send Report before any report exists fails safely", async ({ page }) => {
+            const dialogPromise = dismissNextDialog(page)
+            await page.locator("#btn-send").click()
+            expect(await dialogPromise).toBe("alert")
+            await expect(page.locator("#json-report")).toBeEmpty()
+        })
+
     })
 
 })
