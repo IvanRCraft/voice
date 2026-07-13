@@ -29,6 +29,13 @@ export class BrowserSpeechProvider implements SpeechProvider {
     public onError: ((text: string, message: string) => void) | null = null
 
     async speak(options: SpeechOptions): Promise<void> {
+        const synthesis = window.speechSynthesis
+        // Chrome may leave speechSynthesis paused after cancel(); resume so the
+        // next session in a different Validation mode can still be heard.
+        if (synthesis.paused) {
+            synthesis.resume()
+        }
+
         const utterance = new SpeechSynthesisUtterance(options.text)
         if (options.language) {
             utterance.lang = options.language
@@ -48,11 +55,15 @@ export class BrowserSpeechProvider implements SpeechProvider {
                 this.onError?.(options.text, message)
                 resolve()
             }
-            window.speechSynthesis.speak(utterance)
+            synthesis.speak(utterance)
         })
     }
 
     async stop(): Promise<void> {
-        window.speechSynthesis.cancel()
+        const synthesis = window.speechSynthesis
+        synthesis.cancel()
+        if (synthesis.paused) {
+            synthesis.resume()
+        }
     }
 }

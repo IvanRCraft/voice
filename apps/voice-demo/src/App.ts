@@ -298,6 +298,20 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         execLogEl.scrollTop = execLogEl.scrollHeight
     }
 
+    /**
+     * PR-9e.2 fix: each Automatic / Interactive session must start from a
+     * clean voice stack. Interactive mic mode stops recognition via
+     * channel.stop(); without re-preparing here, the next Automatic run
+     * could lose Event/Speak handling or stay silent after speechSynthesis
+     * was cancelled.
+     */
+    async function prepareVoiceForNewSession(): Promise<void> {
+        await app.channel.stop()
+        app.channel.ensureInteractionSubscribed()
+        await app.speech.stop()
+        obsState.textContent = app.channel.getState()
+    }
+
     function refreshHistory(): void {
         const all = reportHistory.getAll()
         if (all.length === 0) {
@@ -561,10 +575,9 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
 
     function finishInteractiveSession(): void {
         controller.stop()
-        if (inputSourceSelect.value === "mic") {
-            void app.channel.stop()
+        void prepareVoiceForNewSession().then(() => {
             obsState.textContent = app.channel.getState()
-        }
+        })
         intPrompt.textContent = "Все сценарии пройдены."
         intExpected.textContent = ""
         renderInteractiveState()
@@ -734,12 +747,14 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         const interactive = modeSelect.value === "interactive"
         interactivePanel.style.display = interactive ? "block" : "none"
         inputSourceRow.style.display = interactive ? "block" : "none"
-        if (interactive) {
-            startedAt = new Date().toISOString()
-            app.executionLog.clear()
-            execLogEl.textContent = ""
-            startInteractiveSession()
-        }
+        void prepareVoiceForNewSession().then(() => {
+            if (interactive) {
+                startedAt = new Date().toISOString()
+                app.executionLog.clear()
+                execLogEl.textContent = ""
+                startInteractiveSession()
+            }
+        })
     })
 
     // PR-9d.2 fix (per client feedback): after a session finished,
@@ -750,10 +765,12 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
     // session directly, right next to the summary the tester is
     // already looking at.
     btnRestart.addEventListener("click", () => {
-        startedAt = new Date().toISOString()
-        app.executionLog.clear()
-        execLogEl.textContent = ""
-        startInteractiveSession()
+        void prepareVoiceForNewSession().then(() => {
+            startedAt = new Date().toISOString()
+            app.executionLog.clear()
+            execLogEl.textContent = ""
+            startInteractiveSession()
+        })
     })
 
     // ---- Existing wiring (unchanged, now also resolves micWaiter) ----
@@ -864,6 +881,8 @@ export function mountApp(root: HTMLElement, app: BenchApp): void {
         setAutomaticRunLocked(true)
 
         try {
+            await prepareVoiceForNewSession()
+
             startedAt = new Date().toISOString()
             app.executionLog.clear()
             execLogEl.textContent = ""
