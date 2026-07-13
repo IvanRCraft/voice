@@ -13,6 +13,7 @@ import {
     assertExecutionLog,
     assertAutomaticProgressSequence,
     waitForAutomaticRunInProgress,
+    setSessionLanguage,
     type ValidationReportJson
 } from "./utils/helpers"
 
@@ -27,6 +28,7 @@ test.describe("PR-9e.2 Automatic Suite", () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto("/")
+        await setSessionLanguage(page, "en-US")
         await expect(page.locator("#mode-select")).toHaveValue("automatic")
     })
 
@@ -104,10 +106,10 @@ test.describe("PR-9e.2 Automatic Suite", () => {
     test.describe("6. Configuration", () => {
 
         test("report preserves the launch configuration from Session Panel", async ({ page }) => {
-            await page.locator("#s-language").selectOption("ru-RU")
+            await page.locator("#s-voice-language").selectOption("ru-RU")
             await page.locator("#s-recognition").selectOption("OpenAI")
             await page.locator("#s-speech").selectOption("Azure")
-            await page.locator("#s-scenario-set").fill("builtin")
+            await page.locator("#s-scenario-set").selectOption("upload")
 
             const config = await readSessionConfig(page)
             await runAll(page)

@@ -24,9 +24,15 @@ import type { SpeechOptions } from "../types/SpeechOptions"
 
 export class BrowserSpeechProvider implements SpeechProvider {
 
+    private defaultLanguage: string | undefined
+
     public onStarted: ((text: string) => void) | null = null
     public onFinished: ((text: string) => void) | null = null
     public onError: ((text: string, message: string) => void) | null = null
+
+    setLanguage(language: string): void {
+        this.defaultLanguage = language
+    }
 
     async speak(options: SpeechOptions): Promise<void> {
         const synthesis = window.speechSynthesis
@@ -37,8 +43,9 @@ export class BrowserSpeechProvider implements SpeechProvider {
         }
 
         const utterance = new SpeechSynthesisUtterance(options.text)
-        if (options.language) {
-            utterance.lang = options.language
+        const language = options.language ?? this.defaultLanguage
+        if (language) {
+            utterance.lang = language
         }
 
         await new Promise<void>((resolve) => {

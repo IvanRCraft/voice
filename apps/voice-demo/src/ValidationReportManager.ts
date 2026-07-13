@@ -43,7 +43,8 @@ export function buildValidationReport(
   return {
     Session: {
       tester: meta.tester || "Tester-1",
-      language: meta.language || "en-US",
+      language: meta.voiceLanguage || meta.language || "en-US",
+      uiLanguage: meta.uiLanguage || "en-US",
       startedAt: startedAt
     },
     Environment: {
@@ -53,7 +54,7 @@ export function buildValidationReport(
     TestConfiguration: {
       recognitionProvider: meta.recognitionProvider || "Browser",
       speechProvider: meta.speechProvider || "Browser",
-      scenarioSet: meta.scenarioSet || "builtin",
+      scenarioSet: meta.scenarioSet || "automatic",
       inputSource: options?.inputSource || "inject"
     },
     ValidationMode: options?.validationMode || "Automatic",

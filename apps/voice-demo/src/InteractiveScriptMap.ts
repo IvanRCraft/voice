@@ -64,7 +64,23 @@ const SCRIPTS_FR: ScriptsByTrigger = {
     }
 }
 
+const SCRIPTS_AR_MA: ScriptsByTrigger = {
+    "voice.recognized": {
+        promptText: "گول أي جملة",
+        expectedText: "الجواب المتوقع: تأكيد التعرف"
+    },
+    "interaction.echo": {
+        promptText: "گول أي جملة",
+        expectedText: "الجواب المتوقع: تكرار الجملة"
+    },
+    "interaction.delayed": {
+        promptText: "گول أي جملة",
+        expectedText: "الجواب المتوقع: جواب مع تأخير"
+    }
+}
+
 const SCRIPTS_BY_LANGUAGE: Record<string, ScriptsByTrigger> = {
+    "ar-MA": SCRIPTS_AR_MA,
     "ru-RU": SCRIPTS_RU,
     "en-US": SCRIPTS_EN,
     "fr-FR": SCRIPTS_FR
@@ -79,6 +95,7 @@ export function getInteractiveScript(trigger: string, language: string): Interac
 }
 
 const STEP_LABEL_BY_LANGUAGE: Record<string, string> = {
+    "ar-MA": "الخطوة",
     "ru-RU": "Шаг",
     "en-US": "Step",
     "fr-FR": "Étape"

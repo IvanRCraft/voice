@@ -1,5 +1,5 @@
 import { test, expect } from "@playwright/test"
-import { setValidationMode, setInputSource, completeInteractiveSessionWithInject } from "./utils/helpers"
+import { setValidationMode, setInputSource, setSessionLanguage, completeInteractiveSessionWithInject } from "./utils/helpers"
 
 /**
  * PR-10: Interactive mode regression tests.
@@ -14,6 +14,7 @@ test.describe("Interactive mode (Inject Action)", () => {
 
     test.beforeEach(async ({ page }) => {
         await page.goto("/")
+        await setSessionLanguage(page, "en-US")
         await setValidationMode(page, "interactive")
         await setInputSource(page, "inject")
     })
@@ -28,9 +29,9 @@ test.describe("Interactive mode (Inject Action)", () => {
     test("Session Summary shows 3 fully confirmed scenarios with no repeats/skips", async ({ page }) => {
         await completeInteractiveSessionWithInject(page)
         const summary = page.locator("#int-summary-content")
-        await expect(summary).toContainText("Подтверждено полностью: 3")
-        await expect(summary).toContainText("Повторов: 0")
-        await expect(summary).toContainText("Пропущено: 0")
+        await expect(summary).toContainText("Fully confirmed: 3")
+        await expect(summary).toContainText("Repeats: 0")
+        await expect(summary).toContainText("Skipped: 0")
     })
 
     test("Start New Session resets the Runner back to step 1", async ({ page }) => {
@@ -45,7 +46,7 @@ test.describe("Interactive mode (Inject Action)", () => {
         await page.locator("#int-btn-skip").click()
         await page.locator("#int-btn-skip").click()
         const summary = page.locator("#int-summary-content")
-        await expect(summary).toContainText("Пропущено: 3")
+        await expect(summary).toContainText("Skipped: 3")
     })
 
 })

@@ -8,7 +8,8 @@ import fs from "node:fs/promises"
 
 export interface SessionConfig {
     tester: string
-    language: string
+    uiLanguage: string
+    voiceLanguage: string
     recognitionProvider: string
     speechProvider: string
     scenarioSet: string
@@ -19,6 +20,7 @@ export interface ValidationReportJson {
     Session: {
         tester: string
         language: string
+        uiLanguage?: string
         startedAt: string
     }
     TestConfiguration: {
@@ -57,11 +59,28 @@ export async function setInputSource(page: Page, source: "mic" | "inject") {
     await page.locator("#input-source-select").selectOption(source)
 }
 
+/** Switches Session Panel UI language (BCP-47 tag). */
+export async function setUiLanguage(page: Page, language: string) {
+    await page.locator("#s-ui-language").selectOption(language)
+}
+
+/** Switches Session Panel voice language (STT/TTS/prompts). */
+export async function setVoiceLanguage(page: Page, language: string) {
+    await page.locator("#s-voice-language").selectOption(language)
+}
+
+/** @deprecated Use setVoiceLanguage for voice or setUiLanguage for UI. */
+export async function setSessionLanguage(page: Page, language: string) {
+    await setVoiceLanguage(page, language)
+    await setUiLanguage(page, language)
+}
+
 /** Reads the current Session Panel configuration from the UI. */
 export async function readSessionConfig(page: Page): Promise<SessionConfig> {
     return {
         tester: await page.locator("#s-tester").inputValue(),
-        language: await page.locator("#s-language").inputValue(),
+        uiLanguage: await page.locator("#s-ui-language").inputValue(),
+        voiceLanguage: await page.locator("#s-voice-language").inputValue(),
         recognitionProvider: await page.locator("#s-recognition").inputValue(),
         speechProvider: await page.locator("#s-speech").inputValue(),
         scenarioSet: await page.locator("#s-scenario-set").inputValue(),
@@ -241,7 +260,8 @@ export function assertConfigurationMatchesSession(
     report: ValidationReportJson,
     config: SessionConfig
 ) {
-    expect(report.Session.language).toBe(config.language)
+    expect(report.Session.language).toBe(config.voiceLanguage)
+    expect(report.Session.uiLanguage).toBe(config.uiLanguage)
     expect(report.TestConfiguration.recognitionProvider).toBe(config.recognitionProvider)
     expect(report.TestConfiguration.speechProvider).toBe(config.speechProvider)
     expect(report.TestConfiguration.scenarioSet).toBe(config.scenarioSet)

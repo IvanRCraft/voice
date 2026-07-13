@@ -1,7 +1,11 @@
 export class BrowserSpeechProvider {
+    defaultLanguage;
     onStarted = null;
     onFinished = null;
     onError = null;
+    setLanguage(language) {
+        this.defaultLanguage = language;
+    }
     async speak(options) {
         const synthesis = window.speechSynthesis;
         // Chrome may leave speechSynthesis paused after cancel(); resume so the
@@ -10,8 +14,9 @@ export class BrowserSpeechProvider {
             synthesis.resume();
         }
         const utterance = new SpeechSynthesisUtterance(options.text);
-        if (options.language) {
-            utterance.lang = options.language;
+        const language = options.language ?? this.defaultLanguage;
+        if (language) {
+            utterance.lang = language;
         }
         await new Promise((resolve) => {
             utterance.onstart = () => {

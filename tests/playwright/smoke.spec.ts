@@ -45,9 +45,13 @@ test.describe("Smoke Suite", () => {
         await expect(tester).toBeEditable()
         await expect(tester).not.toHaveValue("")
 
-        const language = page.locator("#s-language")
-        await expect(language).toBeEnabled()
-        expect(await language.inputValue()).toMatch(/^[a-z]{2}-[A-Z]{2}$/)
+        const uiLanguage = page.locator("#s-ui-language")
+        await expect(uiLanguage).toBeEnabled()
+        expect(await uiLanguage.inputValue()).toMatch(/^[a-z]{2}-[A-Z]{2}$/)
+
+        const voiceLanguage = page.locator("#s-voice-language")
+        await expect(voiceLanguage).toBeEnabled()
+        expect(await voiceLanguage.inputValue()).toMatch(/^[a-z]{2}-[A-Z]{2}$/)
 
         const backendUrl = page.locator("#s-backend-url")
         await expect(backendUrl).toBeEditable()
